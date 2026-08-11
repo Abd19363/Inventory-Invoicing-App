@@ -9,10 +9,12 @@ import useAuth from "@/hooks/useAuth";
 
 export default function InvoiceDashboard() {
 
+
     useAuth();
 
     const router = useRouter();
     const queryClient = useQueryClient();
+
 
 
     // ==========================================
@@ -160,25 +162,78 @@ export default function InvoiceDashboard() {
 
         try {
 
+            // Find invoice before deleting it
+            const invoiceToDelete = invoices.find(
+                (invoice) => invoice.id === id
+            );
+
+            // Delete invoice
             await deleteInvoice(id);
+
+
+            // Add deletion to activity log
+            if (invoiceToDelete) {
+
+                const existingLogs =
+                    JSON.parse(
+                        localStorage.getItem(
+                            "invoiceActivityLog"
+                        )
+                    ) || [];
+
+
+                const newLog = {
+
+                    logId: Date.now(),
+
+                    invoiceId:
+                        invoiceToDelete.id,
+
+                    customerName:
+                        invoiceToDelete.customerName,
+
+                    total:
+                        invoiceToDelete.total,
+
+                    action:
+                        "Deleted",
+
+                    timestamp:
+                        new Date().toLocaleString()
+
+                };
+
+
+                const updatedLogs = [
+                    newLog,
+                    ...existingLogs
+                ];
+
+
+                localStorage.setItem(
+                    "invoiceActivityLog",
+                    JSON.stringify(updatedLogs)
+                );
+            }
+
 
             alert(
                 "Invoice deleted successfully!"
             );
 
 
+            // Refresh invoice list
             queryClient.invalidateQueries({
                 queryKey: ["invoices"]
             });
+
 
         } catch (error) {
 
             alert(error.message);
 
         }
-
     }
-
 
     // ==========================================
     // PAGE
@@ -386,9 +441,8 @@ export default function InvoiceDashboard() {
 
                                             <td className="p-3 text-right font-semibold text-emerald-400">
 
-                                                $
-                                                {invoice.total?.toLocaleString() ?? 0}
-
+                                                Rs. {Number(invoice.total || 0).toLocaleString()}
+                                                
                                             </td>
 
 
@@ -473,7 +527,7 @@ export default function InvoiceDashboard() {
                     </span>
 
                     <span>
-                        Create Invoice
+                        Generate Invoice
                     </span>
 
                 </button>

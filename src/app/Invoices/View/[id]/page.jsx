@@ -93,7 +93,7 @@ export default function InvoiceDetails() {
                         </p>
 
                         <p className="font-semibold">
-                            {invoice.total}
+                            Rs. {Number(invoice.total || 0).toLocaleString()}
                         </p>
                     </div>
 
@@ -142,12 +142,14 @@ export default function InvoiceDetails() {
                                 </td>
 
                                 <td className="p-3">
-                                    {item.priceperquantity}
+                                    Rs. {Number(item.salePrice || 0).toLocaleString()}
                                 </td>
 
                                 <td className="p-3">
-                                    {Number(item.invoiceQuantity || 0) *
-                                        Number(item.priceperquantity || 0)}
+                                    {(
+                                        Number(item.invoiceQuantity || 0) *
+                                        Number(item.salePrice || 0)
+                                    ).toLocaleString()}
                                 </td>
 
                             </tr>
@@ -168,7 +170,8 @@ export default function InvoiceDetails() {
                     </button>
 
                     <span className="text-xl font-bold">
-                        Grand Total: {invoice.total}
+                        Grand Total: Rs.{" "}
+                        {Number(invoice.total || 0).toLocaleString()}
                     </span>
 
                 </div>

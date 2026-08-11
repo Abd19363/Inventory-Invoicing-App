@@ -1,73 +1,140 @@
 import { fakeApi } from "./fakeApi";
 
-const Storage_key="invoice";
+const STORAGE_KEY = "invoices";
 
-//getting invoice items
+// ==========================================
+// GET ALL INVOICES
+// ==========================================
 
-export async function getInvoices(){
-    return fakeApi(()=>{
-        return JSON.parse(localStorage.getItem(Storage_key)) || [];
+export async function getInvoices() {
 
-    })
+    return fakeApi(() => {
 
-}
+        return (
+            JSON.parse(
+                localStorage.getItem(STORAGE_KEY)
+            ) || []
+        );
 
-// get invoice by id
-
-export async function getInvoiceById(id){
-    return fakeApi(()=>{
-        const items= JSON.parse(localStorage.getItem(Storage_key)) || [];
-
-        return items.find((item)=>{
-
-           return item.id=== Number(id);
-
-        });
     });
+
 }
 
-//save invoice
 
-export async function saveInvoice(invoice){
-    return fakeApi(()=>{
-       
-        const invoices=JSON.parse(localStorage.getItem(Storage_key)) || [];
+// ==========================================
+// GET INVOICE BY ID
+// ==========================================
+
+export async function getInvoiceById(id) {
+
+    return fakeApi(() => {
+
+        const invoices =
+            JSON.parse(
+                localStorage.getItem(STORAGE_KEY)
+            ) || [];
+
+        return invoices.find(
+            (invoice) =>
+                invoice.id === Number(id)
+        );
+
+    });
+
+}
+
+
+// ==========================================
+// SAVE INVOICE
+// ==========================================
+
+export async function saveInvoice(invoice) {
+
+    return fakeApi(() => {
+
+        const invoices =
+            JSON.parse(
+                localStorage.getItem(STORAGE_KEY)
+            ) || [];
+
         invoices.push(invoice);
 
-           localStorage.setItem(Storage_key, JSON.stringify(invoices));
-           
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(invoices)
+        );
+
         return invoices;
 
     });
 
 }
 
-// update the invoice
 
-export async function updateInvoice(id, updatedInvoice){
-    return fakeApi(()=>{
-            const items=JSON.parse(localStorage.getItem(Storage_key)) || [];
-            const updatedInvoices= items.map((item)=>{
-                return item.id===Number(id) ? updatedInvoice: item;
+// ==========================================
+// UPDATE INVOICE
+// ==========================================
+
+export async function updateInvoice(
+    id,
+    updatedInvoice
+) {
+
+    return fakeApi(() => {
+
+        const invoices =
+            JSON.parse(
+                localStorage.getItem(STORAGE_KEY)
+            ) || [];
+
+        const updatedInvoices =
+            invoices.map((invoice) => {
+
+                return invoice.id === Number(id)
+                    ? updatedInvoice
+                    : invoice;
+
             });
-            localStorage.setItem(Storage_key,JSON.stringify(updatedInvoices));
-            return updatedInvoice;
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(updatedInvoices)
+        );
+
+        return updatedInvoice;
 
     });
 
 }
 
-export async function deleteInvoice(id){
-    return fakeApi(()=>{
-        const items=JSON.parse(localStorage.getItem(Storage_key)) || [];
-        const deletedInvoices= items.filter((item)=>{
-            return item.id!== Number(id);
-        })
 
-        localStorage.setItem(Storage_key, JSON.stringify(deletedInvoices));
+// ==========================================
+// DELETE INVOICE
+// ==========================================
+
+export async function deleteInvoice(id) {
+
+    return fakeApi(() => {
+
+        const invoices =
+            JSON.parse(
+                localStorage.getItem(STORAGE_KEY)
+            ) || [];
+
+        const updatedInvoices =
+            invoices.filter((invoice) => {
+
+                return invoice.id !== Number(id);
+
+            });
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(updatedInvoices)
+        );
 
         return true;
 
     });
-}
 
+}

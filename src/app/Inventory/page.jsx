@@ -3,40 +3,22 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import useAuth from "@/hooks/useAuth";
-
 import {
     getItems,
     deleteItem
 } from "@/Services/inventoryService";
 
-
 export default function Inventory() {
-
-    useAuth();
 
     const router = useRouter();
 
-
-    // ==========================================
-    // PRODUCTS
-    // ==========================================
-
     const [products, setProducts] = useState([]);
+    const [search, setSearch] = useState("");
 
 
-    // ==========================================
-    // SEARCH
-    // ==========================================
-
-    const [searchTerm, setSearchTerm] = useState("");
-
-    const [filteredProducts, setFilteredProducts] = useState([]);
-
-
-    // ==========================================
+    // =========================
     // LOAD PRODUCTS
-    // ==========================================
+    // =========================
 
     async function loadProducts() {
 
@@ -44,11 +26,9 @@ export default function Inventory() {
 
             const data = await getItems();
 
-            console.log(data);
+            console.log("Inventory Products:", data);
 
-            setProducts(data);
-
-            setFilteredProducts(data);
+            setProducts(data || []);
 
         } catch (error) {
 
@@ -66,68 +46,13 @@ export default function Inventory() {
     }, []);
 
 
-    // ==========================================
-    // DEBOUNCED SEARCH
-    // ==========================================
-
-    useEffect(() => {
-
-        const timer = setTimeout(() => {
-
-            const search = searchTerm
-                .toLowerCase()
-                .trim();
-
-
-            if (search === "") {
-
-                setFilteredProducts(products);
-
-                return;
-
-            }
-
-
-            const filtered = products.filter((product) => {
-
-                return (
-                    product.name
-                        ?.toLowerCase()
-                        .includes(search)
-
-                    ||
-
-                    product.category
-                        ?.toLowerCase()
-                        .includes(search)
-                );
-
-            });
-
-
-            setFilteredProducts(filtered);
-
-        }, 500);
-
-
-        // Cleanup previous timer
-
-        return () => {
-
-            clearTimeout(timer);
-
-        };
-
-    }, [searchTerm, products]);
-
-
-    // ==========================================
+    // =========================
     // DELETE PRODUCT
-    // ==========================================
+    // =========================
 
     async function handledelete(id) {
 
-        console.log("Id: ", id);
+        console.log("Deleting Product ID:", id);
 
         try {
 
@@ -144,32 +69,83 @@ export default function Inventory() {
     }
 
 
-    // ==========================================
-    // PAGE
-    // ==========================================
+    // =========================
+    // SEARCH PRODUCTS
+    // =========================
+
+    const filteredProducts = products.filter((product) => {
+
+        const searchText = search.toLowerCase();
+
+        return (
+            product.name
+                ?.toLowerCase()
+                .includes(searchText)
+
+            ||
+
+            product.category
+                ?.toLowerCase()
+                .includes(searchText)
+        );
+
+    });
+
 
     return (
 
         <div
-            className="flex flex-col items-center justify-center flex-1 p-8 text-center rounded-xl border border-slate-700/70 backdrop-blur-md shadow-xl w-300 mx-auto my-8 bg-[radial-gradient(circle_at_50%_50%,_#334155_0%,_#1e293b_35%,_#111827_70%,_#020617_100%)]"
+            className="
+                flex
+                flex-col
+                items-center
+                justify-center
+                flex-1
+                p-8
+                text-center
+                rounded-xl
+                border
+                border-slate-700/70
+                backdrop-blur-md
+                shadow-xl
+                w-[95%]
+                mx-auto
+                my-8
+                bg-[radial-gradient(circle_at_50%_50%,_#334155_0%,_#1e293b_35%,_#111827_70%,_#020617_100%)]
+            "
         >
 
 
-            {/* ==================================
-                HEADING
-            ================================== */}
+            {/* ========================= */}
+            {/* HEADING */}
+            {/* ========================= */}
 
             <div className="space-y-2">
 
                 <h1
-                    className="text-4xl font-extrabold tracking-tight text-amber-500 drop-shadow-md transition-transform duration-200 hover:scale-105 cursor-pointer"
+                    className="
+                        text-4xl
+                        font-extrabold
+                        tracking-tight
+                        text-amber-500
+                        drop-shadow-md
+                        transition-transform
+                        duration-200
+                        hover:scale-105
+                        cursor-pointer
+                    "
                 >
                     Welcome to Inventory
                 </h1>
 
 
                 <p
-                    className="text-sm md:text-base font-medium text-amber-700"
+                    className="
+                        text-sm
+                        md:text-base
+                        font-medium
+                        text-amber-700
+                    "
                 >
                     Please click the button below to add a product
                 </p>
@@ -177,187 +153,364 @@ export default function Inventory() {
             </div>
 
 
-            {/* ==================================
-                SEARCH BAR
-            ================================== */}
+            {/* ========================= */}
+            {/* SEARCH BAR */}
+            {/* ========================= */}
 
             <div className="w-full mt-8">
 
                 <input
                     type="text"
-                    value={searchTerm}
-                    onChange={(e) =>
-                        setSearchTerm(e.target.value)
-                    }
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by product name or category..."
-                    className="w-full px-4 py-3 rounded-lg border border-slate-600 bg-slate-900 text-white placeholder-slate-400 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className="
+                        w-full
+                        px-5
+                        py-4
+                        rounded-lg
+                        border
+                        border-slate-600
+                        bg-slate-900/70
+                        text-white
+                        placeholder-slate-400
+                        outline-none
+                        focus:border-amber-500
+                        focus:ring-2
+                        focus:ring-amber-500/20
+                    "
                 />
 
-                <p className="text-sm text-slate-400 text-left mt-2">
+            </div>
 
-                    Showing {filteredProducts.length} of{" "}
-                    {products.length} products
+
+            {/* ========================= */}
+            {/* RESULT COUNT */}
+            {/* ========================= */}
+
+            <div className="w-full text-left mt-3">
+
+                <p className="text-slate-400">
+
+                    Showing {filteredProducts.length} of {products.length} products
 
                 </p>
 
             </div>
 
 
-            {/* ==================================
-                PRODUCT TABLE
-            ================================== */}
+            {/* ========================= */}
+            {/* INVENTORY TABLE */}
+            {/* ========================= */}
 
-            <table className="w-full mt-6 border border-gray-300">
+            <div className="w-full overflow-x-auto mt-8">
 
-                <thead>
+                <table className="w-full border border-gray-300">
 
-                    <tr>
-
-                        <th className="border p-2">
-                            Name
-                        </th>
-
-                        <th className="border p-2">
-                            Category
-                        </th>
-
-                        <th className="border p-2">
-                            Quantity
-                        </th>
-
-                        <th className="border p-2">
-                            Price Per Quantity
-                        </th>
-
-                        <th className="border p-2">
-                            Total Price
-                        </th>
-
-                        <th className="border p-2">
-                            Actions
-                        </th>
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                    {filteredProducts.length === 0 ? (
+                    <thead>
 
                         <tr>
 
-                            <td
-                                colSpan="6"
-                                className="border p-6 text-gray-400"
-                            >
-                                No products found.
-                            </td>
+                            <th className="border p-2">
+                                Name
+                            </th>
+
+                            <th className="border p-2">
+                                Category
+                            </th>
+
+                            <th className="border p-2">
+                                Stock
+                            </th>
+
+                            <th className="border p-2">
+                                Purchase Price
+                            </th>
+
+                            <th className="border p-2">
+                                Retail Price
+                            </th>
+
+                            <th className="border p-2">
+                                Discount
+                            </th>
+
+                            <th className="border p-2">
+                                Sale Price
+                            </th>
+
+                            <th className="border p-2">
+                                Total Price
+                            </th>
+
+                            <th className="border p-2">
+                                Actions
+                            </th>
 
                         </tr>
 
-                    ) : (
-
-                        filteredProducts.map((product) => (
-
-                            <tr key={product.id}>
-
-                                <td className="border p-2">
-                                    {product.name}
-                                </td>
+                    </thead>
 
 
-                                <td className="border p-2">
-                                    {product.category}
-                                </td>
+                    <tbody>
 
+                        {filteredProducts.length === 0 ? (
 
-                                <td className="border p-2">
-                                    {product.quantity}
-                                </td>
+                            <tr>
 
-
-                                <td className="border p-2">
-                                    {product.priceperquantity}
-                                </td>
-
-
-                                <td className="border p-2">
-
-                                    {
-                                        product.quantity *
-                                        product.priceperquantity
-                                    }
-
-                                </td>
-
-
-                                {/* ACTIONS */}
-
-                                <td className="border p-2">
-
-                                    {/* EDIT */}
-
-                                    <button
-                                        onClick={() => {
-
-                                            router.push(
-                                                `/Inventory/Edit/${product.id}`
-                                            );
-
-                                        }}
-                                        className="bg-blue-400 hover:bg-blue-800 text-white font-semibold mt-2 px-6 py-2 rounded-lg shadow-lg transition-all duration-200 cursor-pointer"
-                                    >
-                                        Edit
-                                    </button>
-
-
-                                    {/* DELETE */}
-
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-
-                                            console.log("Clicked");
-
-                                            console.log(
-                                                "product: ",
-                                                product
-                                            );
-
-                                            handledelete(
-                                                product.id
-                                            );
-
-                                        }}
-                                        className="bg-red-400 hover:bg-red-800 text-white font-semibold mt-2 ml-3 px-6 py-2 rounded-lg shadow-lg transition-all duration-200 cursor-pointer"
-                                    >
-                                        Delete
-                                    </button>
-
+                                <td
+                                    colSpan={9}
+                                    className="
+                                        border
+                                        p-6
+                                        text-center
+                                        text-slate-400
+                                    "
+                                >
+                                    No products found.
                                 </td>
 
                             </tr>
 
-                        ))
+                        ) : (
 
-                    )}
+                            filteredProducts.map((product) => {
 
-                </tbody>
+                                const purchasePrice =
+                                    Number(product.purchasePrice || 0);
 
-            </table>
+                                const retailPrice =
+                                    Number(product.retailPrice || 0);
+
+                                const discount =
+                                    Number(product.discount || 0);
+
+                                const salePrice =
+                                    Number(
+                                        product.salePrice ??
+                                        (
+                                            retailPrice -
+                                            (
+                                                retailPrice *
+                                                discount
+                                            ) / 100
+                                        )
+                                    );
+
+                                const quantity =
+                                    Number(product.quantity || 0);
+
+                                const totalValue =
+                                    quantity * salePrice;
 
 
-            {/* ==================================
-                ADD PRODUCT
-            ================================== */}
+                                return (
+
+                                    <tr
+                                        key={product.id}
+                                        className="
+                                            hover:bg-slate-700/50
+                                            transition-colors
+                                        "
+                                    >
+
+                                        {/* NAME */}
+
+                                        <td className="border p-2">
+
+                                            {product.name}
+
+                                        </td>
+
+
+                                        {/* CATEGORY */}
+
+                                        <td className="border p-2">
+
+                                            {product.category}
+
+                                        </td>
+
+
+                                        {/* STOCK */}
+
+                                        <td className="border p-2">
+
+                                            {quantity}
+
+                                        </td>
+
+
+                                        {/* PURCHASE PRICE */}
+
+                                        <td className="border p-2">
+
+                                            {purchasePrice.toLocaleString()}
+
+                                        </td>
+
+
+                                        {/* RETAIL PRICE */}
+
+                                        <td className="border p-2">
+
+                                            {retailPrice.toLocaleString()}
+
+                                        </td>
+
+
+                                        {/* DISCOUNT */}
+
+                                        <td className="border p-2">
+
+                                            {discount}%
+
+                                        </td>
+
+
+                                        {/* SALE PRICE */}
+
+                                        <td
+                                            className="
+                                                border
+                                                p-2
+                                                font-semibold
+                                                text-emerald-400
+                                            "
+                                        >
+
+                                            {salePrice.toLocaleString()}
+
+                                        </td>
+
+
+                                        {/* TOTAL INVENTORY VALUE */}
+
+                                        <td
+                                            className="
+                                                border
+                                                p-2
+                                                font-semibold
+                                            "
+                                        >
+
+                                            {totalValue.toLocaleString()}
+
+                                        </td>
+
+
+                                        {/* ACTIONS */}
+
+                                        <td className="border p-2">
+
+                                            <div
+                                                className="
+                                                    flex
+                                                    items-center
+                                                    justify-center
+                                                    gap-3
+                                                "
+                                            >
+
+                                                {/* EDIT */}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+
+                                                        router.push(
+                                                            `/Inventory/Edit/${product.id}`
+                                                        );
+
+                                                    }}
+                                                    className="
+                                                        bg-blue-400
+                                                        hover:bg-blue-800
+                                                        text-white
+                                                        font-semibold
+                                                        px-6
+                                                        py-3
+                                                        rounded-lg
+                                                        transition-all
+                                                        duration-200
+                                                        cursor-pointer
+                                                    "
+                                                >
+                                                    Edit
+                                                </button>
+
+
+                                                {/* DELETE */}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+
+                                                        handledelete(
+                                                            product.id
+                                                        );
+
+                                                    }}
+                                                    className="
+                                                        bg-red-400
+                                                        hover:bg-red-800
+                                                        text-white
+                                                        font-semibold
+                                                        px-6
+                                                        py-3
+                                                        rounded-lg
+                                                        transition-all
+                                                        duration-200
+                                                        cursor-pointer
+                                                    "
+                                                >
+                                                    Delete
+                                                </button>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+
+                                );
+
+                            })
+
+                        )}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            {/* ========================= */}
+            {/* ADD PRODUCT */}
+            {/* ========================= */}
 
             <button
-                onClick={() =>
-                    router.push("/Inventory/Add")
-                }
-                className="bg-emerald-800 hover:bg-yellow-600 text-white font-semibold mt-8 px-6 py-3 rounded-lg shadow-lg transition-all duration-200 cursor-pointer flex items-center gap-2"
+                type="button"
+                onClick={() => router.push("/Inventory/Add")}
+                className="
+                    bg-emerald-800
+                    hover:bg-yellow-600
+                    text-white
+                    font-semibold
+                    mt-8
+                    px-6
+                    py-3
+                    rounded-lg
+                    shadow-lg
+                    transition-all
+                    duration-200
+                    hover:-translate-y-0.5
+                    cursor-pointer
+                    flex
+                    items-center
+                    gap-2
+                "
             >
 
                 <span>+</span>
@@ -367,15 +520,31 @@ export default function Inventory() {
             </button>
 
 
-            {/* ==================================
-                HOME
-            ================================== */}
+            {/* ========================= */}
+            {/* HOME */}
+            {/* ========================= */}
 
             <button
-                onClick={() =>
-                    router.push("/Home")
-                }
-                className="bg-yellow-600 hover:bg-emerald-800 text-white font-semibold mt-8 px-6 py-3 rounded-lg shadow-lg transition-all duration-200 cursor-pointer"
+                type="button"
+                onClick={() => router.push("/Home")}
+                className="
+                    bg-yellow-600
+                    hover:bg-emerald-800
+                    text-white
+                    font-semibold
+                    mt-8
+                    px-6
+                    py-3
+                    rounded-lg
+                    shadow-lg
+                    transition-all
+                    duration-200
+                    hover:-translate-y-0.5
+                    cursor-pointer
+                    flex
+                    items-center
+                    gap-2
+                "
             >
 
                 Go to Home Page

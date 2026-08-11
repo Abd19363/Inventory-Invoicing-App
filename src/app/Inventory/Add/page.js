@@ -12,7 +12,10 @@ export default function AddProduct(){
         name:"",
         category:"",
         quantity:"",
-        priceperquantity:""
+        purchasePrice:"",
+        retailPrice: "",
+        discount: 0,
+        
     };
 
     const handlesubmit=async(values)=>{
