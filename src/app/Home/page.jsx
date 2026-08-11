@@ -9,8 +9,6 @@ import { getInvoices } from "@/Services/invoicesService";
 
 import useAuth from "@/hooks/useAuth";
 
-import Header from "../components/Header";
-
 import {
     LineChart,
     Line,
@@ -18,9 +16,8 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    ResponsiveContainer
+    ResponsiveContainer,
 } from "recharts";
-
 
 export default function Home() {
     useAuth();
@@ -35,89 +32,57 @@ export default function Home() {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
 
-
     // ==========================================
     // AUTHENTICATION
     // ==========================================
 
     useEffect(() => {
-
         const isLoggedIn = localStorage.getItem("isLoggedIn");
 
         if (!isLoggedIn) {
             router.push("/Login");
         }
-
     }, [router]);
 
-
     useEffect(() => {
-
         if (!isAuthenticated()) {
             router.push("/Login");
         }
-
     }, [router]);
-
 
     // ==========================================
     // LOAD DASHBOARD DATA
     // ==========================================
 
     useEffect(() => {
-
         async function loadDashboardData() {
-
             try {
-
                 const productData = await getItems();
                 const invoiceData = await getInvoices();
 
-                console.log(
-                    "Dashboard Products:",
-                    productData
-                );
-
-                console.log(
-                    "Dashboard Invoices:",
-                    invoiceData
-                );
+                console.log("Dashboard Products:", productData);
+                console.log("Dashboard Invoices:", invoiceData);
 
                 setProducts(productData);
                 setInvoices(invoiceData);
-
             } catch (error) {
-
-                console.error(
-                    "Dashboard data error:",
-                    error
-                );
-
+                console.error("Dashboard data error:", error);
             } finally {
-
                 setLoading(false);
-
             }
-
         }
 
         loadDashboardData();
-
     }, []);
-
 
     // ==========================================
     // LOGOUT
     // ==========================================
 
     const logout = () => {
-
         localStorage.removeItem("isLoggedIn");
-
         router.push("/Login");
-
     };
-
 
     // ==========================================
     // INVENTORY ANALYTICS
@@ -125,49 +90,33 @@ export default function Home() {
 
     const totalProducts = products.length;
 
+    const totalStock = products.reduce((total, product) => {
+        return total + Number(product.quantity || 0);
+    }, 0);
 
-    const totalStock = products.reduce(
-        (total, product) => {
-
-            return total + Number(
-                product.quantity || 0
-            );
-
-        },
-        0
-    );
-
-
-    const totalInventoryValue = products.reduce(
-        (total, product) => {
-
-            return (
-                total +
-                Number(product.quantity || 0) *
-                Number(product.priceperquantity || 0)
-            );
-
-        },
-        0
-    );
-
+    const totalInventoryValue = products.reduce((total, product) => {
+        return (
+            total +
+            Number(product.quantity || 0) *
+            Number(product.priceperquantity || 0)
+        );
+    }, 0);
 
     // ==========================================
     // INVENTORY CHART DATA
     // ==========================================
 
-    const inventoryChartData = products.map(
-        (product) => ({
+    const inventoryChartData = products.map((product) => ({
+        product: product.name,
 
-            product: product.name,
+        purchaseValue:
+            Number(product.quantity || 0) *
+            Number(product.purchasePrice || 0),
 
-            inventoryValue:
-                Number(product.quantity || 0) *
-                Number(product.priceperquantity || 0)
-
-        })
-    );
-
+        sellingValue:
+            Number(product.quantity || 0) *
+            Number(product.salePrice || 0),
+    }));
 
     // ==========================================
     // INVOICE ANALYTICS
@@ -175,25 +124,12 @@ export default function Home() {
 
     const totalInvoices = invoices.length;
 
-
-    const totalRevenue = invoices.reduce(
-        (total, invoice) => {
-
-            return (
-                total +
-                Number(invoice.total || 0)
-            );
-
-        },
-        0
-    );
-
+    const totalRevenue = invoices.reduce((total, invoice) => {
+        return total + Number(invoice.total || 0);
+    }, 0);
 
     const averageInvoiceValue =
-        totalInvoices > 0
-            ? totalRevenue / totalInvoices
-            : 0;
-
+        totalInvoices > 0 ? totalRevenue / totalInvoices : 0;
 
     // ==========================================
     // INVOICE REVENUE BY DATE
@@ -201,216 +137,431 @@ export default function Home() {
 
     const revenueByDate = {};
 
-
     invoices.forEach((invoice) => {
-
         const date = invoice.date;
-
-        const revenue =
-            Number(invoice.total || 0);
-
+        const revenue = Number(invoice.total || 0);
 
         if (revenueByDate[date]) {
-
             revenueByDate[date] += revenue;
-
         } else {
-
             revenueByDate[date] = revenue;
-
         }
-
     });
 
-
-    const revenueChartData = Object.entries(
-        revenueByDate
-    ).map(([date, revenue]) => ({
-
-        date,
-        revenue
-
-    }));
-
-
-    // Sort invoices by date
-
-    revenueChartData.sort(
-        (a, b) =>
-            new Date(a.date) -
-            new Date(b.date)
+    const revenueChartData = Object.entries(revenueByDate).map(
+        ([date, revenue]) => ({
+            date,
+            revenue,
+        })
     );
 
+    revenueChartData.sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+    );
 
     // ==========================================
     // LOADING
     // ==========================================
 
     if (loading) {
-
         return (
+            <div className="min-h-screen bg-[#051424] text-[#d4e4fa] flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-4xl mb-4">📦</div>
 
-            <div className="min-h-screen bg-zinc-500">
-
-                <Header />
-
-                <div className="flex justify-center items-center min-h-[80vh]">
-
-                    <p className="text-xl font-semibold text-white">
+                    <p className="text-lg font-semibold text-[#4edea3]">
                         Loading Dashboard...
                     </p>
 
+                    <p className="text-sm text-[#86948a] mt-2">
+                        Preparing your inventory and invoice data
+                    </p>
                 </div>
-
             </div>
-
         );
-
     }
-
 
     // ==========================================
     // PAGE
     // ==========================================
 
     return (
+        <div className="min-h-screen bg-[#051424] text-[#d4e4fa]">
 
-        <div className="min-h-screen bg-zinc-500">
+            {/* =====================================================
+          SIDEBAR
+      ===================================================== */}
 
-            {/* HEADER */}
+            <aside className="fixed left-0 top-0 hidden md:flex h-screen w-[260px] flex-col bg-[#0d1c2d] border-r border-[#3c4a42] z-40">
 
-            <Header />
+                {/* Logo */}
+                <div className="px-6 py-6 flex items-center gap-3">
 
+                    <div className="w-10 h-10 rounded-lg bg-[#10b981]/10 border border-[#10b981]/30 flex items-center justify-center">
 
-            <div className="p-8">
+                        <span className="text-xl">
+                            📦
+                        </span>
 
+                    </div>
 
-                {/* ==================================
-                    DASHBOARD TITLE
-                ================================== */}
+                    <div>
+                        <h1 className="text-lg font-bold text-[#4edea3]">
+                            InvPro SaaS
+                        </h1>
 
-                <div className="mb-8 text-center p-6 rounded-2xl border border-transparent transition-all duration-300 hover:scale-[1.02] hover:bg-zinc-800/40 hover:border-zinc-700/60 hover:shadow-2xl hover:shadow-emerald-500/10 cursor-pointer group">
-
-                    <h1 className="text-4xl font-bold text-white transition-colors duration-300 group-hover:text-emerald-400">
-                        Welcome to Dashboard
-                    </h1>
-
-                    <p className="text-zinc-200 mt-2 transition-colors duration-300 group-hover:text-zinc-100">
-                        Overview of your inventory and invoices
-                    </p>
+                        <p className="text-xs text-[#86948a]">
+                            Enterprise Edition
+                        </p>
+                    </div>
 
                 </div>
 
 
-                {/* ==================================
-                    SUMMARY CARDS
-                ================================== */}
+                {/* Create Invoice */}
+                <div className="px-6 mb-6">
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <button
+                        onClick={() => router.push("/Invoices")}
+                        className="w-full bg-[#10b981] hover:bg-[#059669] text-white py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#10b981]/10"
+                    >
+                        <span>🧾</span>
+                        Create Invoice
+                    </button>
 
-                    {/* TOTAL PRODUCTS */}
-                    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-800/80 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:bg-zinc-800/80 hover:shadow-2xl hover:shadow-zinc-800/50 cursor-pointer group">
-                        <h2 className="text-zinc-400 text-sm font-medium transition-colors duration-300 group-hover:text-zinc-300">
-                            Total Products
+                </div>
+
+
+                {/* Navigation */}
+                <nav className="flex-1 px-3 space-y-1">
+
+                    {/* Dashboard */}
+                    <button
+                        onClick={() => router.push("/Home")}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-r-lg text-[#4edea3] font-semibold border-r-2 border-[#4edea3] bg-[#4edea3]/5 text-left"
+                    >
+                        <span>▦</span>
+                        Dashboard
+                    </button>
+
+
+                    {/* Inventory */}
+                    <button
+                        onClick={() => router.push("/Inventory")}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#bbcabf] hover:bg-[#1c2b3c] hover:text-white transition-colors text-left"
+                    >
+                        <span>📦</span>
+                        Inventory
+                    </button>
+
+
+                    {/* Invoicing */}
+                    <button
+                        onClick={() => router.push("/Invoices")}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#bbcabf] hover:bg-[#1c2b3c] hover:text-white transition-colors text-left"
+                    >
+                        <span>🧾</span>
+                        Invoicing
+                    </button>
+
+
+                    {/* Reports */}
+                    <button
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#bbcabf] hover:bg-[#1c2b3c] hover:text-white transition-colors text-left"
+                    >
+                        <span>📊</span>
+                        Reports
+                    </button>
+
+
+                    {/* Settings */}
+                    <button
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#bbcabf] hover:bg-[#1c2b3c] hover:text-white transition-colors text-left"
+                    >
+                        <span>⚙</span>
+                        Settings
+                    </button>
+
+                </nav>
+
+
+                {/* Logout */}
+                <div className="px-3 py-5 border-t border-[#3c4a42]/40">
+
+                    <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#bbcabf] hover:bg-[#1c2b3c] hover:text-[#ffb4ab] transition-colors text-left"
+                    >
+                        <span>↪</span>
+                        Logout
+                    </button>
+
+                </div>
+
+            </aside>
+
+
+            {/* =====================================================
+          TOP BAR
+      ===================================================== */}
+
+            <header className="fixed top-0 right-0 hidden md:flex h-16 w-[calc(100%-260px)] bg-[#051424]/80 backdrop-blur-md border-b border-[#3c4a42] items-center justify-between px-8 z-30">
+
+                {/* Search */}
+                <div className="w-full max-w-md">
+
+                    <div className="relative">
+
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#86948a]">
+                            🔍
+                        </span>
+
+                        <input
+                            type="text"
+                            placeholder="Search inventory, invoices..."
+                            className="w-full bg-[#0d1c2d] border border-[#3c4a42] rounded-lg text-sm text-[#d4e4fa] placeholder-[#86948a] pl-10 pr-4 py-2.5 outline-none focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20"
+                        />
+
+                    </div>
+
+                </div>
+
+
+                {/* Right Actions */}
+                <div className="flex items-center gap-4 ml-6">
+
+                    <button className="text-[#bbcabf] hover:text-[#4edea3] text-xl">
+                        🔔
+                    </button>
+
+                    <button className="text-[#bbcabf] hover:text-[#4edea3] text-xl">
+                        ?
+                    </button>
+
+                    <div className="h-6 w-px bg-[#3c4a42]" />
+
+                    <button className="text-sm text-[#bbcabf] hover:text-white">
+                        Support
+                    </button>
+
+                    <button
+                        onClick={() => router.push("/Invoices")}
+                        className="bg-[#10b981] hover:bg-[#059669] text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2"
+                    >
+                        <span>+</span>
+                        New Entry
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            {/* =====================================================
+          MAIN CONTENT
+      ===================================================== */}
+
+            <main className="md:ml-[260px] md:pt-16 min-h-screen p-4 md:p-8">
+
+                {/* =====================================================
+            WELCOME SECTION
+        ===================================================== */}
+
+                <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+
+                    <div>
+
+                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-[#d4e4fa]">
+                            Dashboard Overview
                         </h2>
-                        <p className="text-3xl font-bold text-white mt-2 transition-transform duration-300 group-hover:scale-105 origin-left">
+
+                        <p className="text-sm md:text-base text-[#bbcabf] mt-2">
+                            Here's what's happening with your inventory and invoices today.
+                        </p>
+
+                    </div>
+
+
+                    <div className="flex items-center gap-2 text-sm text-[#bbcabf] bg-[#122131] px-3 py-2 rounded-lg border border-[#3c4a42]">
+                        <span>📅</span>
+                        <span>Today</span>
+                    </div>
+
+                </div>
+
+
+                {/* =====================================================
+            METRIC CARDS
+        ===================================================== */}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+                    {/* Total Inventory Value */}
+                    <div className="bg-[#1e293b] rounded-lg p-6 border border-[#475569]/30 relative overflow-hidden hover:border-[#10b981]/50 transition-all">
+
+                        <div className="flex justify-between items-start mb-6">
+
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#bbcabf]">
+                                Total Inventory Value
+                            </p>
+
+                            <div className="w-8 h-8 rounded-full bg-[#10b981]/10 flex items-center justify-center">
+                                💰
+                            </div>
+
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-[#d4e4fa]">
+                            ${totalInventoryValue.toLocaleString()}
+                        </h3>
+
+                        <p className="text-xs text-[#4edea3] mt-2">
+                            Current inventory value
+                        </p>
+
+                    </div>
+
+
+                    {/* Stock */}
+                    <div className="bg-[#1e293b] rounded-lg p-6 border border-[#475569]/30 relative overflow-hidden hover:border-[#ffb95f]/50 transition-all">
+
+                        <div className="flex justify-between items-start mb-6">
+
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#bbcabf]">
+                                Available Stock Items
+                            </p>
+
+                            <div className="w-8 h-8 rounded-full bg-[#ffb95f]/10 flex items-center justify-center">
+                                📦
+                            </div>
+
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-[#d4e4fa]">
+                            {totalStock.toLocaleString()}
+                        </h3>
+
+                        <p className="text-xs text-[#ffb95f] mt-2">
+                            {totalProducts} product types
+                        </p>
+
+                    </div>
+
+
+                    {/* Outstanding Invoices */}
+                    <div className="bg-[#1e293b] rounded-lg p-6 border border-[#475569]/30 relative overflow-hidden hover:border-[#ffb4ab]/50 transition-all">
+
+                        <div className="flex justify-between items-start mb-6">
+
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#bbcabf]">
+                                Total Invoices
+                            </p>
+
+                            <div className="w-8 h-8 rounded-full bg-[#ffb4ab]/10 flex items-center justify-center">
+                                🧾
+                            </div>
+
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-[#d4e4fa]">
+                            {totalInvoices}
+                        </h3>
+
+                        <p className="text-xs text-[#ffb4ab] mt-2">
+                            Invoices recorded
+                        </p>
+
+                    </div>
+
+
+                    {/* Revenue */}
+                    <div className="bg-[#1e293b] rounded-lg p-6 border border-[#475569]/30 relative overflow-hidden hover:border-[#71a1ff]/50 transition-all">
+
+                        <div className="flex justify-between items-start mb-6">
+
+                            <p className="text-xs font-semibold uppercase tracking-wider text-[#bbcabf]">
+                                Total Revenue
+                            </p>
+
+                            <div className="w-8 h-8 rounded-full bg-[#71a1ff]/10 flex items-center justify-center">
+                                💳
+                            </div>
+
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-[#d4e4fa]">
+                            ${totalRevenue.toLocaleString()}
+                        </h3>
+
+                        <p className="text-xs text-[#4edea3] mt-2">
+                            Revenue generated
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                {/* =====================================================
+            SECONDARY METRICS
+        ===================================================== */}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+
+                    <div className="bg-[#1e293b] rounded-lg p-6 border border-[#475569]/30 hover:border-[#10b981]/50 transition-all">
+
+                        <p className="text-xs uppercase tracking-wider font-semibold text-[#bbcabf]">
+                            Average Invoice Value
+                        </p>
+
+                        <p className="text-2xl font-bold text-[#4edea3] mt-2">
+                            ${averageInvoiceValue.toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                            })}
+                        </p>
+
+                    </div>
+
+
+                    <div className="bg-[#1e293b] rounded-lg p-6 border border-[#475569]/30 hover:border-[#10b981]/50 transition-all">
+
+                        <p className="text-xs uppercase tracking-wider font-semibold text-[#bbcabf]">
+                            Total Products
+                        </p>
+
+                        <p className="text-2xl font-bold text-[#d4e4fa] mt-2">
                             {totalProducts}
                         </p>
-                    </div>
 
-                    {/* TOTAL STOCK */}
-                    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-800/80 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:bg-zinc-800/80 hover:shadow-2xl hover:shadow-zinc-800/50 cursor-pointer group">
-                        <h2 className="text-zinc-400 text-sm font-medium transition-colors duration-300 group-hover:text-zinc-300">
-                            Total Stock
-                        </h2>
-                        <p className="text-3xl font-bold text-white mt-2 transition-transform duration-300 group-hover:scale-105 origin-left">
-                            {totalStock}
-                        </p>
-                    </div>
-
-                    {/* TOTAL INVOICES */}
-                    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-800/80 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:bg-zinc-800/80 hover:shadow-2xl hover:shadow-zinc-800/50 cursor-pointer group">
-                        <h2 className="text-zinc-400 text-sm font-medium transition-colors duration-300 group-hover:text-zinc-300">
-                            Total Invoices
-                        </h2>
-                        <p className="text-3xl font-bold text-white mt-2 transition-transform duration-300 group-hover:scale-105 origin-left">
-                            {totalInvoices}
-                        </p>
-                    </div>
-
-                    {/* TOTAL REVENUE */}
-                    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-800/80 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-zinc-800/80 hover:shadow-2xl hover:shadow-emerald-500/10 cursor-pointer group">
-                        <h2 className="text-zinc-400 text-sm font-medium transition-colors duration-300 group-hover:text-emerald-300">
-                            Total Revenue
-                        </h2>
-                        <p className="text-3xl font-bold text-emerald-400 mt-2 transition-transform duration-300 group-hover:scale-105 origin-left">
-                            ${totalRevenue.toLocaleString()}
-                        </p>
                     </div>
 
                 </div>
 
 
-                {/* ==================================
-    SECONDARY ANALYTICS
-================================== */}
+                {/* =====================================================
+            CHARTS
+        ===================================================== */}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
-                    {/* INVENTORY VALUE */}
-                    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-800/80 transition-all duration-300 hover:-translate-y-1 hover:border-zinc-700 hover:bg-zinc-800/80 hover:shadow-2xl hover:shadow-zinc-800/50 cursor-pointer group">
-                        <h2 className="text-zinc-400 text-sm font-medium transition-colors duration-300 group-hover:text-zinc-300">
-                            Total Inventory Value
-                        </h2>
-                        <p className="text-2xl font-bold text-white mt-2 transition-transform duration-300 group-hover:scale-105 origin-left">
-                            ${totalInventoryValue.toLocaleString()}
-                        </p>
-                    </div>
-
-                    {/* AVERAGE INVOICE */}
-                    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-zinc-800/80 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:bg-zinc-800/80 hover:shadow-2xl hover:shadow-emerald-500/10 cursor-pointer group">
-                        <h2 className="text-zinc-400 text-sm font-medium transition-colors duration-300 group-hover:text-emerald-300">
-                            Average Invoice Value
-                        </h2>
-                        <p className="text-2xl font-bold text-emerald-400 mt-2 transition-transform duration-300 group-hover:scale-105 origin-left">
-                            ${averageInvoiceValue.toLocaleString(
-                                undefined,
-                                {
-                                    maximumFractionDigits: 2
-                                }
-                            )}
-                        </p>
-                    </div>
-
-                </div>
-
-                {/* ==================================
-                    TWO LINE CHARTS
-                ================================== */}
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
 
 
-                    {/* ==================================
-                        INVENTORY CHART
-                    ================================== */}
+                    {/* Inventory Chart */}
+                    <div className="bg-[#1e293b] rounded-lg border border-[#475569]/30 p-6 shadow-sm">
 
-                    <div className="bg-zinc-900 rounded-xl p-5 shadow-lg">
-
-                        <h2 className="text-lg font-bold text-white mb-1">
+                        <h3 className="text-lg font-semibold text-[#d4e4fa]">
                             Inventory Trend
-                        </h2>
+                        </h3>
 
-                        <p className="text-sm text-zinc-400 mb-4">
+                        <p className="text-sm text-[#bbcabf] mt-1 mb-5">
                             Inventory value by product
                         </p>
 
 
                         {inventoryChartData.length === 0 ? (
 
-                            <div className="h-[260px] flex items-center justify-center">
+                            <div className="h-[300px] flex items-center justify-center">
 
-                                <p className="text-zinc-500">
+                                <p className="text-[#86948a] text-sm">
                                     No inventory data available yet.
                                 </p>
 
@@ -418,12 +569,9 @@ export default function Home() {
 
                         ) : (
 
-                            <div className="w-full h-[260px]">
+                            <div className="w-full h-[300px]">
 
-                                <ResponsiveContainer
-                                    width="100%"
-                                    height="100%"
-                                >
+                                <ResponsiveContainer width="100%" height="100%">
 
                                     <LineChart
                                         data={inventoryChartData}
@@ -431,49 +579,82 @@ export default function Home() {
                                             top: 5,
                                             right: 10,
                                             left: 0,
-                                            bottom: 5
+                                            bottom: 5,
                                         }}
                                     >
 
                                         <CartesianGrid
+                                            stroke="#3c4a42"
                                             strokeDasharray="3 3"
                                         />
 
                                         <XAxis
                                             dataKey="product"
                                             tick={{
-                                                fontSize: 11
+                                                fill: "#86948a",
+                                                fontSize: 11,
                                             }}
+                                            axisLine={{
+                                                stroke: "#3c4a42",
+                                            }}
+                                            tickLine={false}
                                         />
 
                                         <YAxis
                                             tick={{
-                                                fontSize: 11
+                                                fill: "#86948a",
+                                                fontSize: 11,
                                             }}
+                                            axisLine={false}
+                                            tickLine={false}
                                         />
 
                                         <Tooltip
-                                            formatter={(value) =>
-                                                Number(
-                                                    value
-                                                ).toLocaleString()
-                                            }
+                                            contentStyle={{
+                                                backgroundColor: "#0d1c2d",
+                                                border: "1px solid #3c4a42",
+                                                borderRadius: "8px",
+                                                color: "#d4e4fa",
+                                            }}
+                                            formatter={(value, name) => [
+                                                `Rs. ${Number(value || 0).toLocaleString()}`,
+                                                name
+                                            ]}
                                         />
 
                                         <Line
                                             type="monotone"
-                                            dataKey="inventoryValue"
+                                            dataKey="purchaseValue"
+                                            name="Purchase Value"
                                             stroke="#3b82f6"
-                                            strokeWidth={2}
+                                            strokeWidth={3}
                                             dot={{
-                                                r: 4
+                                                r: 4,
+                                                fill: "#3b82f6",
                                             }}
                                             activeDot={{
-                                                r: 6
+                                                r: 6,
                                             }}
                                         />
 
+                                        <Line
+                                            type="monotone"
+                                            dataKey="sellingValue"
+                                            name="Selling Value"
+                                            stroke="#10b981"
+                                            strokeWidth={3}
+                                            dot={{
+                                                r: 4,
+                                                fill: "#10b981",
+                                            }}
+                                            activeDot={{
+                                                r: 6,
+                                            }}
+                                        />
+
+
                                     </LineChart>
+                                    
 
                                 </ResponsiveContainer>
 
@@ -484,26 +665,23 @@ export default function Home() {
                     </div>
 
 
-                    {/* ==================================
-                        INVOICE CHART
-                    ================================== */}
+                    {/* Revenue Chart */}
+                    <div className="bg-[#1e293b] rounded-lg border border-[#475569]/30 p-6 shadow-sm">
 
-                    <div className="bg-zinc-900 rounded-xl p-5 shadow-lg">
+                        <h3 className="text-lg font-semibold text-[#d4e4fa]">
+                            Revenue Trend
+                        </h3>
 
-                        <h2 className="text-lg font-bold text-white mb-1">
-                            Invoice Trend
-                        </h2>
-
-                        <p className="text-sm text-zinc-400 mb-4">
+                        <p className="text-sm text-[#bbcabf] mt-1 mb-5">
                             Revenue generated over time
                         </p>
 
 
                         {revenueChartData.length === 0 ? (
 
-                            <div className="h-[260px] flex items-center justify-center">
+                            <div className="h-[300px] flex items-center justify-center">
 
-                                <p className="text-zinc-500">
+                                <p className="text-[#86948a] text-sm">
                                     No invoice data available yet.
                                 </p>
 
@@ -511,12 +689,9 @@ export default function Home() {
 
                         ) : (
 
-                            <div className="w-full h-[260px]">
+                            <div className="w-full h-[300px]">
 
-                                <ResponsiveContainer
-                                    width="100%"
-                                    height="100%"
-                                >
+                                <ResponsiveContainer width="100%" height="100%">
 
                                     <LineChart
                                         data={revenueChartData}
@@ -524,45 +699,59 @@ export default function Home() {
                                             top: 5,
                                             right: 10,
                                             left: 0,
-                                            bottom: 5
+                                            bottom: 5,
                                         }}
                                     >
 
                                         <CartesianGrid
+                                            stroke="#3c4a42"
                                             strokeDasharray="3 3"
                                         />
 
                                         <XAxis
                                             dataKey="date"
                                             tick={{
-                                                fontSize: 11
+                                                fill: "#86948a",
+                                                fontSize: 11,
                                             }}
+                                            axisLine={{
+                                                stroke: "#3c4a42",
+                                            }}
+                                            tickLine={false}
                                         />
 
                                         <YAxis
                                             tick={{
-                                                fontSize: 11
+                                                fill: "#86948a",
+                                                fontSize: 11,
                                             }}
+                                            axisLine={false}
+                                            tickLine={false}
                                         />
 
                                         <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: "#0d1c2d",
+                                                border: "1px solid #3c4a42",
+                                                borderRadius: "8px",
+                                                color: "#d4e4fa",
+                                            }}
                                             formatter={(value) =>
-                                                Number(
-                                                    value
-                                                ).toLocaleString()
+                                                Number(value).toLocaleString()
                                             }
                                         />
 
                                         <Line
                                             type="monotone"
                                             dataKey="revenue"
-                                            stroke="#10b981"
-                                            strokeWidth={2}
+                                            stroke="#4edea3"
+                                            strokeWidth={3}
                                             dot={{
-                                                r: 4
+                                                r: 4,
+                                                fill: "#4edea3",
                                             }}
                                             activeDot={{
-                                                r: 6
+                                                r: 6,
                                             }}
                                         />
 
@@ -579,73 +768,76 @@ export default function Home() {
                 </div>
 
 
-                {/* ==================================
-                    QUICK ACTIONS
-                ================================== */}
+                {/* =====================================================
+            QUICK ACTIONS
+        ===================================================== */}
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                <div className="bg-[#1e293b] border border-[#475569]/30 rounded-lg p-6 mb-8">
+
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+
+                        <div>
+
+                            <h3 className="text-lg font-semibold text-[#d4e4fa]">
+                                Quick Actions
+                            </h3>
+
+                            <p className="text-sm text-[#bbcabf] mt-1">
+                                Manage your inventory and invoices
+                            </p>
+
+                        </div>
 
 
-                    <button
-                        onClick={() =>
-                            router.push("/Inventory")
-                        }
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors"
-                    >
-                        Inventory Management
-                    </button>
+                        <div className="flex flex-wrap justify-center gap-3">
+
+                            <button
+                                onClick={() => router.push("/Inventory")}
+                                className="bg-[#10b981] hover:bg-[#059669] text-white font-semibold px-5 py-2.5 rounded-lg transition-colors"
+                            >
+                                Inventory Management
+                            </button>
 
 
-                    <button
-                        onClick={() =>
-                            router.push("/Invoices")
-                        }
-                        className="bg-emerald-500 hover:bg-emerald-700 text-white font-medium px-6 py-3 rounded-lg transition-colors"
-                    >
-                        Invoice Management
-                    </button>
+                            <button
+                                onClick={() => router.push("/Invoices")}
+                                className="bg-[#122131] hover:bg-[#1c2b3c] border border-[#3c4a42] text-[#d4e4fa] font-semibold px-5 py-2.5 rounded-lg transition-colors"
+                            >
+                                Invoice Management
+                            </button>
+
+                        </div>
+
+                    </div>
 
                 </div>
 
 
-                {/* ==================================
-                    LOGOUT
-                ================================== */}
+                {/* =====================================================
+            BOTTOM ACTIONS
+        ===================================================== */}
 
-                <div className="flex justify-center">
+                <div className="flex flex-wrap justify-center gap-3 pb-8">
 
                     <button
                         onClick={logout}
-                        className="bg-red-500 hover:bg-red-700 text-white font-medium px-5 py-2 rounded transition-colors"
+                        className="border border-[#ffb4ab]/30 bg-[#ffb4ab]/5 hover:bg-[#ffb4ab]/10 text-[#ffb4ab] font-medium px-5 py-2 rounded-lg transition-colors"
                     >
                         Logout
                     </button>
 
-                </div>
-
-
-                {/* ==================================
-                    MAIN PAGE
-                ================================== */}
-
-                <div className="flex justify-center mt-6">
 
                     <button
-                        onClick={() =>
-                            router.push("/")
-                        }
-                        className="bg-zinc-800 hover:bg-zinc-950 text-white font-medium px-5 py-2 rounded transition-colors"
+                        onClick={() => router.push("/")}
+                        className="border border-[#3c4a42] bg-[#122131] hover:bg-[#1c2b3c] text-[#d4e4fa] font-medium px-5 py-2 rounded-lg transition-colors"
                     >
                         Go to Main Page
                     </button>
 
                 </div>
 
-
-            </div>
+            </main>
 
         </div>
-
     );
-
 }

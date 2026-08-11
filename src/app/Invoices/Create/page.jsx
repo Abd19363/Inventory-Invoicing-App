@@ -17,10 +17,18 @@ import {
 } from "@/store/invoiceDraftSlice";
 
 import { saveInvoice } from "@/Services/invoicesService";
-import { getItems, updateItem } from "@/Services/inventoryService";
+import {
+    getItems,
+    updateItem
+} from "@/Services/inventoryService";
 
+
+// ==================================================
+// VALIDATION SCHEMA
+// ==================================================
 
 const invoiceSchema = z.object({
+
     customerName: z
         .string()
         .min(1, "Customer name is required"),
@@ -28,115 +36,240 @@ const invoiceSchema = z.object({
     date: z
         .string()
         .min(1, "Invoice date is required"),
+
 });
+
+
+// ==================================================
+// INVOICE LOG KEY
+// ==================================================
 
 const INVOICE_LOG_KEY = "invoiceActivityLog";
 
+
+// ==================================================
+// COMPONENT
+// ==================================================
+
 export default function InvoiceHome() {
 
-    const draft = useSelector((state) => state.invoiceDraft);
+    const draft = useSelector(
+        (state) => state.invoiceDraft
+    );
 
     const dispatch = useDispatch();
 
     const router = useRouter();
 
-    // React Hook Form
+
+    // ==================================================
+    // REACT HOOK FORM
+    // ==================================================
+
     const {
         register,
         formState: { errors }
     } = useForm({
-        resolver: zodResolver(invoiceSchema),
+
+        resolver: zodResolver(
+            invoiceSchema
+        ),
+
     });
 
 
-    // Inventory products
-    const [products, setProducts] = useState([]);
+    // ==================================================
+    // INVENTORY PRODUCTS
+    // ==================================================
+
+    const [products, setProducts] =
+        useState([]);
 
 
-    // Search input
-    const [productSearch, setProductSearch] = useState("");
+    // ==================================================
+    // SEARCH
+    // ==================================================
+
+    const [productSearch, setProductSearch] =
+        useState("");
 
 
-    // Selected product
-    const [selectedProduct, setSelectedProduct] = useState("");
+    // ==================================================
+    // SELECTED PRODUCT
+    // ==================================================
 
-    // invoice Log
-    const [invoiceLogs, setInvoiceLogs] = useState([]);
-
-
-
-    console.log("Invoice Draft State: ", draft);
+    const [selectedProduct, setSelectedProduct] =
+        useState("");
 
 
-    // --------------------------------------------------
+    // ==================================================
+    // INVOICE LOGS
+    // ==================================================
+
+    const [invoiceLogs, setInvoiceLogs] =
+        useState([]);
+
+
+    console.log(
+        "Invoice Draft State:",
+        draft
+    );
+
+
+    // ==================================================
     // SAVE INVOICE
-    // --------------------------------------------------
+    // ==================================================
 
     async function handleSaveInvoice() {
 
-        // 1. Check customer name
-        if (!draft.customerName || !draft.customerName.trim()) {
-            alert("Customer name is required.");
+        // ----------------------------------------------
+        // CUSTOMER NAME
+        // ----------------------------------------------
+
+        if (
+            !draft.customerName ||
+            !draft.customerName.trim()
+        ) {
+
+            alert(
+                "Customer name is required."
+            );
+
             return;
+
         }
 
 
-        // 2. Check invoice date
+        // ----------------------------------------------
+        // DATE
+        // ----------------------------------------------
+
         if (!draft.date) {
-            alert("Invoice date is required.");
+
+            alert(
+                "Invoice date is required."
+            );
+
             return;
+
         }
 
 
-        // 3. Check whether at least one product is added
-        if (!draft.items || draft.items.length === 0) {
-            alert("Please add at least one product to the invoice.");
+        // ----------------------------------------------
+        // ITEMS
+        // ----------------------------------------------
+
+        if (
+            !draft.items ||
+            draft.items.length === 0
+        ) {
+
+            alert(
+                "Please add at least one product to the invoice."
+            );
+
             return;
+
         }
 
 
-        // 4. Check quantity against available stock
+        // ----------------------------------------------
+        // STOCK VALIDATION
+        // ----------------------------------------------
+
         for (const item of draft.items) {
 
-            if (!item.invoiceQuantity || item.invoiceQuantity < 1) {
+            if (
+                !item.invoiceQuantity ||
+                item.invoiceQuantity < 1
+            ) {
+
                 alert(
                     `Please enter a valid quantity for ${item.name}.`
                 );
+
                 return;
+
             }
 
-            if (item.invoiceQuantity > item.quantity) {
+
+            if (
+                item.invoiceQuantity >
+                item.quantity
+            ) {
+
                 alert(
                     `Only ${item.quantity} units of ${item.name} are available in stock.`
                 );
+
                 return;
+
             }
+
         }
 
 
-        // 5. Create invoice
+        // ----------------------------------------------
+        // SAVE
+        // ----------------------------------------------
+
         try {
 
             const invoice = {
+
                 id: Date.now(),
-                customerName: draft.customerName,
-                date: draft.date,
-                items: draft.items,
-                total: grandtotal
+
+                customerName:
+                    draft.customerName,
+
+                date:
+                    draft.date,
+
+                items:
+                    draft.items,
+
+                total:
+                    grandtotal
+
             };
 
 
-            // 6. Save invoice
+            console.log(
+                "Invoice being saved:",
+                invoice
+            );
 
-            console.log("Invoice being saved:", invoice);
-            console.log("Invoice total:", grandtotal);
+
+            console.log(
+                "Invoice total:",
+                grandtotal
+            );
+
+
+            // ------------------------------------------
+            // SAVE INVOICE
+            // ------------------------------------------
 
             await saveInvoice(invoice);
-            addInvoiceLog(invoice, "Added");
 
-            // update inventory stock
 
-            for (const item of draft.items) {
+            // ------------------------------------------
+            // ADD ACTIVITY LOG
+            // ------------------------------------------
+
+            addInvoiceLog(
+                invoice,
+                "Added"
+            );
+
+
+            // ------------------------------------------
+            // UPDATE INVENTORY STOCK
+            // ------------------------------------------
+
+            for (
+                const item of draft.items
+            ) {
 
                 const remainingQuantity =
                     item.quantity -
@@ -147,12 +280,14 @@ export default function InvoiceHome() {
 
                     ...item,
 
-                    quantity: remainingQuantity
-                        
+                    quantity:
+                        remainingQuantity
 
                 };
 
+
                 delete updatedProduct.invoiceQuantity;
+
 
                 await updateItem(
                     item.id,
@@ -162,16 +297,28 @@ export default function InvoiceHome() {
             }
 
 
-            // 7. Success message
-            alert("Invoice saved successfully!");
+            // ------------------------------------------
+            // SUCCESS
+            // ------------------------------------------
+
+            alert(
+                "Invoice saved successfully!"
+            );
 
 
-            // 8. Show saved invoice in console
-            console.log("New Invoice is:", invoice);
+            console.log(
+                "New Invoice is:",
+                invoice
+            );
 
 
-            // 9. Clear Redux invoice draft
-            dispatch(clearDraft());
+            // ------------------------------------------
+            // CLEAR DRAFT
+            // ------------------------------------------
+
+            dispatch(
+                clearDraft()
+            );
 
 
         } catch (error) {
@@ -181,32 +328,48 @@ export default function InvoiceHome() {
                 error
             );
 
-            alert(error.message);
+            alert(
+                error.message
+            );
 
         }
+
     }
 
-    // --------------------------------------------------
-    // LOAD INVENTORY PRODUCTS
-    // --------------------------------------------------
+
+    // ==================================================
+    // LOAD INVENTORY
+    // ==================================================
 
     async function loadProducts() {
 
         try {
 
-            const data = await getItems();
+            const data =
+                await getItems();
 
-            console.log("Inventory Products: ", data);
 
-            setProducts(data);
+            console.log(
+                "Inventory Products:",
+                data
+            );
+
+
+            setProducts(
+                data || []
+            );
+
 
         } catch (error) {
 
-            alert(error.message);
+            alert(
+                error.message
+            );
 
         }
 
     }
+
 
     useEffect(() => {
 
@@ -215,73 +378,89 @@ export default function InvoiceHome() {
     }, []);
 
 
-    // --------------------------------------------------
+    // ==================================================
     // SEARCH PRODUCTS
-    // --------------------------------------------------
+    // ==================================================
 
-    const filteredProducts = products.filter((product) => {
+    const filteredProducts =
+        products.filter(
+            (product) => {
 
-        const search = productSearch.toLowerCase().trim();
+                const search =
+                    productSearch
+                        .toLowerCase()
+                        .trim();
 
 
-        if (!search) {
+                if (!search) {
 
-            return false;
+                    return false;
 
-        }
+                }
 
-        return (
 
-            product.name
-                ?.toLowerCase()
-                .includes(search)
+                return (
 
-            ||
+                    product.name
+                        ?.toLowerCase()
+                        .includes(search)
 
-            product.category
-                ?.toLowerCase()
-                .includes(search)
+                    ||
 
+                    product.category
+                        ?.toLowerCase()
+                        .includes(search)
+
+                );
+
+            }
         );
 
-    });
+
+    // ==================================================
+    // SELECT PRODUCT
+    // ==================================================
+
+    function handleSelectProduct(
+        product
+    ) {
+
+        setSelectedProduct(
+            product.id
+        );
 
 
-    // --------------------------------------------------
-    // SELECT PRODUCT FROM SEARCH RESULTS
-    // --------------------------------------------------
-
-    function handleSelectProduct(product) {
-
-        setSelectedProduct(product.id);
-
-        setProductSearch(product.name);
+        setProductSearch(
+            product.name
+        );
 
     }
 
 
-    // --------------------------------------------------
-    // ADD PRODUCT TO INVOICE
-    // --------------------------------------------------
+    // ==================================================
+    // ADD PRODUCT
+    // ==================================================
 
     function handleaddItem() {
 
-        const product = products.find(
-
-            (product) =>
-                product.id === Number(selectedProduct)
-
-        );
+        const product =
+            products.find(
+                (product) =>
+                    product.id ===
+                    Number(
+                        selectedProduct
+                    )
+            );
 
 
         console.log(
-            "Selected Product Id: ",
+            "Selected Product ID:",
             selectedProduct
         );
 
 
         console.log(
-            "Product found: ",
+            "Product found:",
             product
         );
 
@@ -297,553 +476,930 @@ export default function InvoiceHome() {
             };
 
 
-            dispatch(addItem(invoiceItem));
+            dispatch(
+                addItem(
+                    invoiceItem
+                )
+            );
 
 
-            // Clear search after adding
             setProductSearch("");
 
-
-            // Clear selected product
             setSelectedProduct("");
+
 
         } else {
 
-            alert("Please select a product first.");
+            alert(
+                "Please select a product first."
+            );
 
         }
 
     }
+
+
+    // ==================================================
+    // INCREASE QUANTITY
+    // ==================================================
 
     function handleIncrease(item) {
-        if (item.invoiceQuantity >= item.quantity) {
+
+        if (
+            item.invoiceQuantity >=
+            item.quantity
+        ) {
+
             alert(
                 `Only ${item.quantity} units of ${item.name} are available in stock.`
             );
+
             return;
+
         }
+
 
         dispatch(
+
             updateQuantity({
-                productId: item.id,
-                quantity: item.invoiceQuantity + 1
+
+                productId:
+                    item.id,
+
+                quantity:
+                    item.invoiceQuantity + 1
+
             })
+
         );
+
     }
 
-    function handleQuantityChange(item, value) {
+
+    // ==================================================
+    // QUANTITY CHANGE
+    // ==================================================
+
+    function handleQuantityChange(
+        item,
+        value
+    ) {
+
         if (value === "") {
+
             return;
+
         }
 
-        const quantity = Number(value);
+
+        const quantity =
+            Number(value);
+
 
         if (quantity < 1) {
+
             return;
+
         }
 
-        if (quantity > item.quantity) {
+
+        if (
+            quantity >
+            item.quantity
+        ) {
+
             alert(
                 `Only ${item.quantity} units of ${item.name} are available in stock.`
             );
+
             return;
+
         }
 
+
         dispatch(
+
             updateQuantity({
-                productId: item.id,
-                quantity: quantity
+
+                productId:
+                    item.id,
+
+                quantity:
+                    quantity
+
             })
+
         );
+
     }
 
 
-    // --------------------------------------------------
+    // ==================================================
     // GRAND TOTAL
-    // --------------------------------------------------
+    // ==================================================
 
-    const grandtotal = draft.items.reduce(
-        (total, item) => {
+    const grandtotal =
+        draft.items.reduce(
 
-            const quantity =
-                Number(item.invoiceQuantity) || 0;
+            (
+                total,
+                item
+            ) => {
 
-            const salePrice =
-                Number(item.salePrice) || 0;
+                const quantity =
+                    Number(
+                        item.invoiceQuantity
+                    ) || 0;
 
-            return total + (quantity * salePrice);
 
-        },
+                const salePrice =
+                    Number(
+                        item.salePrice
+                    ) || 0;
 
-        0
-    );
+
+                return (
+                    total +
+                    (
+                        quantity *
+                        salePrice
+                    )
+                );
+
+            },
+
+            0
+
+        );
+
+
+    // ==================================================
+    // LOAD INVOICE LOGS
+    // ==================================================
 
     function loadInvoiceLogs() {
+
         const logs =
             JSON.parse(
-                localStorage.getItem(INVOICE_LOG_KEY)
+                localStorage.getItem(
+                    INVOICE_LOG_KEY
+                )
             ) || [];
 
-        setInvoiceLogs(logs);
+
+        setInvoiceLogs(
+            logs
+        );
+
     }
 
-    // Add log
-    function addInvoiceLog(invoice, action) {
+
+    // ==================================================
+    // ADD INVOICE LOG
+    // ==================================================
+
+    function addInvoiceLog(
+        invoice,
+        action
+    ) {
 
         const existingLogs =
             JSON.parse(
-                localStorage.getItem("invoiceActivityLog")
+                localStorage.getItem(
+                    INVOICE_LOG_KEY
+                )
             ) || [];
+
 
         const newLog = {
-            logId: Date.now(),
-            invoiceId: invoice.id,
-            customerName: invoice.customerName,
-            total: invoice.total,
-            action: action,
-            timestamp: new Date().toLocaleString()
+
+            logId:
+                Date.now(),
+
+            invoiceId:
+                invoice.id,
+
+            customerName:
+                invoice.customerName,
+
+            total:
+                invoice.total,
+
+            action:
+                action,
+
+            timestamp:
+                new Date()
+                    .toLocaleString()
+
         };
 
+
         const updatedLogs = [
+
             newLog,
+
             ...existingLogs
+
         ];
 
+
         localStorage.setItem(
+
             INVOICE_LOG_KEY,
-            JSON.stringify(updatedLogs)
+
+            JSON.stringify(
+                updatedLogs
+            )
+
         );
 
-        setInvoiceLogs(updatedLogs);
+
+        setInvoiceLogs(
+            updatedLogs
+        );
+
     }
+
 
     useEffect(() => {
-        loadInvoiceLogs();
-    }, [])
 
-    function deleteInvoiceLog(logId) {
+        loadInvoiceLogs();
+
+    }, []);
+
+
+    // ==================================================
+    // DELETE LOG
+    // ==================================================
+
+    function deleteInvoiceLog(
+        logId
+    ) {
+
         const existingLogs =
             JSON.parse(
-                localStorage.getItem(INVOICE_LOG_KEY)
+                localStorage.getItem(
+                    INVOICE_LOG_KEY
+                )
             ) || [];
 
-        const updatedLogs = existingLogs.filter(
-            (log) => log.logId !== logId
-        );
+
+        const updatedLogs =
+            existingLogs.filter(
+                (log) =>
+                    log.logId !==
+                    logId
+            );
+
 
         localStorage.setItem(
+
             INVOICE_LOG_KEY,
-            JSON.stringify(updatedLogs)
+
+            JSON.stringify(
+                updatedLogs
+            )
+
         );
 
-        setInvoiceLogs(updatedLogs);
+
+        setInvoiceLogs(
+            updatedLogs
+        );
+
     }
 
 
-
-
-    // --------------------------------------------------
+    // ==================================================
     // UI
-    // --------------------------------------------------
+    // ==================================================
 
     return (
 
-        <div className="bg-zinc-500 min-h-screen">
+        <div
+            className="
+                min-h-screen
+                w-full
+                bg-slate-800
+                text-zinc-100
+                flex
+                flex-col
+                items-center
+                p-4
+                sm:p-6
+                lg:p-8
+                antialiased
+            "
+        >
 
 
-            <div className="max-w-4xl mx-auto w-full flex flex-col items-center gap-6 my-auto py-8">
+            {/* ==================================================
+                MAIN CONTAINER
+            ================================================== */}
+
+            <div
+                className="
+                    w-full
+                    max-w-5xl
+                    flex
+                    flex-col
+                    items-center
+                    gap-6
+                "
+            >
 
 
-                {/* ==========================================
-                    CUSTOMER NAME + DATE
-                ========================================== */}
+                {/* ==================================================
+                    HEADER
+                ================================================== */}
 
-                <div className="w-full flex gap-6 mb-6">
+                <div
+                    className="
+                        w-full
+                        flex
+                        flex-col
+                        items-center
+                        text-center
+                        p-6
+                        rounded-2xl
+                        border
+                        border-slate-700/70
+                        bg-slate-700/70
+                        backdrop-blur-md
+                        shadow-xl
+                        space-y-2
+                    "
+                >
 
+                    <h1
+                        className="
+                            text-3xl
+                            sm:text-4xl
+                            font-extrabold
+                            tracking-tight
+                            text-amber-500
+                            drop-shadow-md
+                        "
+                    >
 
-                    {/* CUSTOMER NAME */}
+                        Create Invoice
 
-                    <div className="flex-1">
-
-                        <label className="block mb-2 font-semibold">
-
-                            Customer Name
-
-                        </label>
-
-
-                        <input
-
-                            type="text"
-
-                            {...register("customerName")}
-
-                            value={draft.customerName}
-
-                            onChange={(e) => {
-
-                                dispatch(
-                                    setCustomerName(
-                                        e.target.value
-                                    )
-                                );
-
-                            }}
-
-                            placeholder="Enter customer name"
-
-                            className="
-                                w-full
-                                border
-                                border-gray-300
-                                rounded-md
-                                p-3
-                                focus:outline-none
-                                focus:ring-2
-                                focus:ring-blue-500
-                            "
-
-                        />
+                    </h1>
 
 
-                        {errors.customerName && (
+                    <p
+                        className="
+                            text-sm
+                            sm:text-base
+                            font-medium
+                            text-slate-300
+                        "
+                    >
 
-                            <p className="text-red-500">
+                        Add customer details and products
+                        to generate a new invoice.
 
-                                {errors.customerName.message}
+                    </p>
 
-                            </p>
-
-                        )}
-
-                    </div>
+                </div>
 
 
 
-                    {/* DATE */}
+                {/* ==================================================
+                    CUSTOMER DETAILS
+                ================================================== */}
 
-                    <div className="flex-1">
+                <div
+                    className="
+                        w-full
+                        rounded-2xl
+                        border
+                        border-slate-700/70
+                        bg-slate-900/70
+                        backdrop-blur-md
+                        shadow-xl
+                        p-5
+                        sm:p-6
+                    "
+                >
 
-                        <label className="block mb-2 font-semibold">
+                    <h2
+                        className="
+                            text-xl
+                            font-bold
+                            text-white
+                            mb-5
+                            border-b
+                            border-slate-700
+                            pb-3
+                        "
+                    >
 
-                            Invoice Date
+                        Customer Details
 
-                        </label>
-
-
-                        <input
-
-                            type="date"
-
-                            {...register("date")}
-
-                            value={draft.date}
-
-                            onChange={(e) => {
-
-                                dispatch(
-                                    setDate(
-                                        e.target.value
-                                    )
-                                );
-
-                            }}
-
-                            className="
-                                w-full
-                                border
-                                border-gray-300
-                                rounded-md
-                                p-3
-                                focus:outline-none
-                                focus:ring-2
-                                focus:ring-blue-500
-                            "
-
-                        />
+                    </h2>
 
 
-                        {errors.date && (
+                    <div
+                        className="
+                            grid
+                            grid-cols-1
+                            md:grid-cols-2
+                            gap-5
+                        "
+                    >
 
-                            <p className="text-red-500">
 
-                                {errors.date.message}
+                        {/* CUSTOMER NAME */}
 
-                            </p>
+                        <div>
 
-                        )}
+                            <label
+                                className="
+                                    block
+                                    mb-2
+                                    text-sm
+                                    font-semibold
+                                    text-slate-300
+                                "
+                            >
+
+                                Customer Name
+
+                            </label>
+
+
+                            <input
+                                type="text"
+                                {...register(
+                                    "customerName"
+                                )}
+                                value={
+                                    draft.customerName
+                                }
+                                onChange={(e) => {
+
+                                    dispatch(
+
+                                        setCustomerName(
+                                            e.target.value
+                                        )
+
+                                    );
+
+                                }}
+                                placeholder="Enter customer name"
+                                className="
+                                    w-full
+                                    px-4
+                                    py-3
+                                    rounded-lg
+                                    border
+                                    border-slate-700
+                                    bg-slate-950/70
+                                    text-white
+                                    placeholder-slate-500
+                                    outline-none
+                                    focus:border-emerald-500
+                                    focus:ring-2
+                                    focus:ring-emerald-500/20
+                                    transition-all
+                                "
+                            />
+
+
+                            {errors.customerName && (
+
+                                <p
+                                    className="
+                                        text-rose-400
+                                        text-sm
+                                        mt-2
+                                    "
+                                >
+
+                                    {
+                                        errors
+                                            .customerName
+                                            .message
+                                    }
+
+                                </p>
+
+                            )}
+
+                        </div>
+
+
+
+                        {/* DATE */}
+
+                        <div>
+
+                            <label
+                                className="
+                                    block
+                                    mb-2
+                                    text-sm
+                                    font-semibold
+                                    text-slate-300
+                                "
+                            >
+
+                                Invoice Date
+
+                            </label>
+
+
+                            <input
+                                type="date"
+                                {...register(
+                                    "date"
+                                )}
+                                value={
+                                    draft.date
+                                }
+                                onChange={(e) => {
+
+                                    dispatch(
+
+                                        setDate(
+                                            e.target.value
+                                        )
+
+                                    );
+
+                                }}
+                                className="
+                                    w-full
+                                    px-4
+                                    py-3
+                                    rounded-lg
+                                    border
+                                    border-slate-700
+                                    bg-slate-950/70
+                                    text-white
+                                    [color-scheme: dark]
+                                    [&::-webkit-calendar-picker-indicator]:invert
+                                    // [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                                    // [&::-webkit-calendar-picker-indicator]:opacity-20
+                                    // hover:[&::-webkit-calendar-picker-indicator]:opacity-100
+                                    outline-none
+                                    focus:border-emerald-500
+                                    focus:ring-2
+                                    focus:ring-emerald-500/20
+                                    transition-all
+                                "
+                            />
+
+
+                            {errors.date && (
+
+                                <p
+                                    className="
+                                        text-rose-400
+                                        text-sm
+                                        mt-2
+                                    "
+                                >
+
+                                    {
+                                        errors
+                                            .date
+                                            .message
+                                    }
+
+                                </p>
+
+                            )}
+
+                        </div>
 
                     </div>
 
                 </div>
 
-                {/* ==========================================
-                    PRODUCT SEARCH SECTION
-                ========================================== */}
 
-                <div className="w-full max-w-2xl relative">
 
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                {/* ==================================================
+                    PRODUCT SEARCH
+                ================================================== */}
 
-                        {/* SEARCH INPUT */}
+                <div
+                    className="
+                        w-full
+                        rounded-2xl
+                        border
+                        border-slate-700/70
+                        bg-slate-900/70
+                        backdrop-blur-md
+                        shadow-xl
+                        p-5
+                        sm:p-6
+                    "
+                >
+
+                    <h2
+                        className="
+                            text-xl
+                            font-bold
+                            text-white
+                            mb-5
+                            border-b
+                            border-slate-700
+                            pb-3
+                        "
+                    >
+
+                        Add Products
+
+                    </h2>
+
+
+                    <div
+                        className="
+                            relative
+                            flex
+                            flex-col
+                            sm:flex-row
+                            gap-3
+                        "
+                    >
 
                         <input
-
                             type="text"
-
-                            value={productSearch}
-
+                            value={
+                                productSearch
+                            }
                             onChange={(e) => {
 
                                 setProductSearch(
                                     e.target.value
                                 );
 
-                                // Reset selected product
-                                setSelectedProduct("");
+                                setSelectedProduct(
+                                    ""
+                                );
 
                             }}
-
-                            placeholder="Search product by name or category..."
-
+                            placeholder="Search by product name or category..."
                             className="
-                                w-full
+                                flex-1
                                 px-4
                                 py-3
-                                text-sm
-                                font-medium
-                                text-zinc-100
-                                bg-zinc-900
-                                border
-                                border-zinc-700
                                 rounded-lg
-                                shadow-sm
+                                border
+                                border-slate-700
+                                bg-slate-950/70
+                                text-white
+                                placeholder-slate-500
                                 outline-none
                                 focus:border-emerald-500
                                 focus:ring-2
                                 focus:ring-emerald-500/20
                             "
-
                         />
 
 
-                        {/* ADD ITEM BUTTON */}
-
                         <button
-
                             type="button"
-
-                            onClick={handleaddItem}
-
+                            onClick={
+                                handleaddItem
+                            }
                             className="
-                                w-full
-                                sm:w-auto
-                                min-h-[42px]
-                                justify-center
-                                bg-black
-                                hover:bg-emerald-700
-                                active:bg-emerald-700
+                                bg-emerald-700
+                                hover:bg-emerald-600
+                                active:bg-emerald-800
                                 text-white
                                 font-semibold
-                                text-sm
-                                px-8
+                                px-7
+                                py-3
                                 rounded-lg
                                 shadow-lg
-                                shadow-emerald-600/20
                                 transition-all
                                 duration-200
+                                hover:-translate-y-0.5
                                 cursor-pointer
-                                flex
-                                items-center
-                                gap-2
                             "
-
                         >
 
-                            Add Item
+                            + Add Item
 
                         </button>
 
-                    </div>
 
 
+                        {/* SEARCH RESULTS */}
 
-                    {/* ==========================================
-                        SEARCH RESULTS
-                    ========================================== */}
+                        {productSearch && (
 
-                    {productSearch && (
+                            <div
+                                className="
+                                    absolute
+                                    z-50
+                                    top-full
+                                    left-0
+                                    right-0
+                                    mt-2
+                                    bg-slate-950
+                                    border
+                                    border-slate-700
+                                    rounded-xl
+                                    shadow-2xl
+                                    overflow-hidden
+                                "
+                            >
 
-                        <div
-                            className="
-                                absolute
-                                z-50
-                                left-0
-                                right-0
-                                mt-2
-                                bg-zinc-900
-                                border
-                                border-zinc-700
-                                rounded-lg
-                                shadow-2xl
-                                overflow-hidden
-                            "
-                        >
+                                {filteredProducts.length >
+                                0 ? (
 
-                            {filteredProducts.length > 0 ? (
+                                    filteredProducts.map(
+                                        (product) => (
 
-                                filteredProducts.map(
-                                    (product) => (
+                                            <button
+                                                key={
+                                                    product.id
+                                                }
+                                                type="button"
+                                                onClick={() =>
+                                                    handleSelectProduct(
+                                                        product
+                                                    )
+                                                }
+                                                className="
+                                                    w-full
+                                                    text-left
+                                                    px-4
+                                                    py-3
+                                                    border-b
+                                                    border-slate-800
+                                                    hover:bg-slate-800
+                                                    transition-colors
+                                                "
+                                            >
 
-                                        <button
+                                                <div
+                                                    className="
+                                                        flex
+                                                        items-center
+                                                        justify-between
+                                                        gap-4
+                                                    "
+                                                >
 
-                                            key={product.id}
+                                                    <div>
 
-                                            type="button"
+                                                        <p
+                                                            className="
+                                                                font-semibold
+                                                                text-white
+                                                            "
+                                                        >
 
-                                            onClick={() =>
-                                                handleSelectProduct(
-                                                    product
-                                                )
-                                            }
+                                                            {
+                                                                product.name
+                                                            }
 
-                                            className="
-                                                w-full
-                                                text-left
-                                                px-4
-                                                py-3
-                                                border-b
-                                                border-zinc-800
-                                                hover:bg-zinc-800
-                                                transition-colors
-                                            "
-
-                                        >
-
-                                            <div className="
-                                                flex
-                                                justify-between
-                                                items-center
-                                            ">
-
-                                                <div>
-
-                                                    <p className="
-                                                        font-semibold
-                                                        text-white
-                                                    ">
-
-                                                        {product.name}
-
-                                                    </p>
+                                                        </p>
 
 
-                                                    <p className="
-                                                        text-xs
-                                                        text-zinc-400
-                                                        mt-1
-                                                    ">
+                                                        <p
+                                                            className="
+                                                                text-xs
+                                                                text-slate-400
+                                                                mt-1
+                                                            "
+                                                        >
 
-                                                        {product.category}
+                                                            {
+                                                                product.category
+                                                            }
 
-                                                    </p>
+                                                        </p>
+
+                                                    </div>
+
+
+                                                    <div
+                                                        className="
+                                                            text-right
+                                                            text-emerald-400
+                                                            font-semibold
+                                                            whitespace-nowrap
+                                                        "
+                                                    >
+
+                                                        Rs.{" "}
+
+                                                        {Number(
+                                                            product.salePrice ||
+                                                            0
+                                                        ).toLocaleString()}
+
+                                                    </div>
 
                                                 </div>
 
+                                            </button>
 
-                                                <div className="
-                                                    text-right
-                                                    text-emerald-400
-                                                    font-semibold
-                                                ">
-
-                                                    {Number(product.salePrice || 0).toLocaleString()}
-
-                                                </div>
-
-                                            </div>
-
-                                        </button>
-
+                                        )
                                     )
-                                )
 
-                            ) : (
+                                ) : (
 
-                                <div className="
-                                    px-4
-                                    py-4
-                                    text-center
-                                    text-zinc-500
-                                ">
+                                    <div
+                                        className="
+                                            px-4
+                                            py-5
+                                            text-center
+                                            text-slate-500
+                                        "
+                                    >
 
-                                    No products found.
+                                        No products found.
 
-                                </div>
+                                    </div>
 
-                            )}
+                                )}
 
-                        </div>
+                            </div>
 
-                    )}
+                        )}
+
+                    </div>
 
                 </div>
 
 
 
-                {/* ==========================================
-                    INVOICE ITEMS TABLE
-                ========================================== */}
+                {/* ==================================================
+                    INVOICE ITEMS
+                ================================================== */}
 
-                <div className="
-                    w-full
-                    bg-zinc-900
-                    border
-                    border-zinc-800
-                    rounded-2xl
-                    p-4
-                    sm:p-6
-                    shadow-2xl
-                    space-y-4
-                ">
+                <div
+                    className="
+                        w-full
+                        rounded-2xl
+                        border
+                        border-slate-700/70
+                        bg-slate-900/70
+                        backdrop-blur-md
+                        shadow-xl
+                        p-5
+                        sm:p-6
+                    "
+                >
 
+                    <div
+                        className="
+                            flex
+                            flex-col
+                            sm:flex-row
+                            sm:items-center
+                            sm:justify-between
+                            gap-3
+                            border-b
+                            border-slate-700
+                            pb-4
+                            mb-5
+                        "
+                    >
 
-                    <div className="
-                        flex
-                        items-center
-                        justify-between
-                        border-b
-                        border-zinc-800
-                        pb-3
-                    ">
-
-                        <h2 className="
-                            text-lg sm:text-xl font-bold text-white tracking-tight ml-88 bg-zinc-700 px-4 rounded hover:bg-slate-600   ">
+                        <h2
+                            className="
+                                text-xl
+                                font-bold
+                                text-white
+                            "
+                        >
 
                             Invoice Items
 
                         </h2>
 
 
-                        <span className="
-                            text-xs
-                            font-semibold
-                            px-2.5
-                            py-1
-                            bg-emerald-500/10
-                            border
-                            border-emerald-500/20
-                            text-emerald-400
-                            rounded-full
-                        ">
+                        <span
+                            className="
+                                w-fit
+                                text-xs
+                                font-semibold
+                                px-3
+                                py-1
+                                bg-emerald-500/10
+                                border
+                                border-emerald-500/20
+                                text-emerald-400
+                                rounded-full
+                            "
+                        >
 
-                            {draft.items.length}
+                            {draft.items.length}{" "}
 
-                            {" "}
-
-                            {draft.items.length === 1
-                                ? "Item"
-                                : "Items"
+                            {
+                                draft.items.length === 1
+                                    ? "Item"
+                                    : "Items"
                             }
 
                         </span>
@@ -854,81 +1410,61 @@ export default function InvoiceHome() {
 
                     {/* TABLE */}
 
-                    <div className="
-                        overflow-x-auto
-                        rounded-xl
-                        border
-                        border-zinc-800/80
-                    ">
+                    <div
+                        className="
+                            overflow-x-auto
+                            rounded-xl
+                            border
+                            border-slate-700/80
+                        "
+                    >
 
-                        <table className="
-                            w-full
-                            text-left
-                            border-collapse
-                        ">
-
+                        <table
+                            className="
+                                w-full
+                                text-left
+                                border-collapse
+                                min-w-[800px]
+                            "
+                        >
 
                             <thead>
 
-                                <tr className="
-                                    bg-zinc-950/80
-                                    text-zinc-400
-                                    text-xs
-                                    font-semibold
-                                    uppercase
-                                    tracking-wider
-                                    border-b
-                                    border-zinc-800
-                                ">
+                                <tr
+                                    className="
+                                        bg-slate-950
+                                        text-slate-400
+                                        text-xs
+                                        font-semibold
+                                        uppercase
+                                        tracking-wider
+                                        border-b
+                                        border-slate-700
+                                    "
+                                >
 
                                     <th className="py-3.5 px-4">
-
                                         Product
-
                                     </th>
 
-                                    <th className="
-                                        py-3.5
-                                        px-4
-                                        text-center
-                                    ">
-
+                                    <th className="py-3.5 px-4 text-center">
                                         Quantity
-
                                     </th>
 
                                     <th className="py-3.5 px-4 text-center">
                                         Available Stock
                                     </th>
 
-                                    <th className="
-                                        py-3.5
-                                        px-4
-                                        text-right
-                                    ">
-
-                                        Retail Price
-
+                                    <th className="py-3.5 px-4 text-right">
+                                        Sale Price
                                     </th>
 
-                                    <th className="
-                                        py-3.5
-                                        px-4
-                                        text-right
-                                    ">
-
+                                    <th className="py-3.5 px-4 text-right">
                                         Total
-
                                     </th>
 
-                                    <th className="
-                                        py-3.5
-                                        px-4
-                                        text-center
-                                    ">
-
+                                    <th className="py-3.5 px-4 text-center">
                                         Actions
-
                                     </th>
 
                                 </tr>
@@ -936,13 +1472,14 @@ export default function InvoiceHome() {
                             </thead>
 
 
-
-                            <tbody className="
-                                divide-y
-                                divide-zinc-800/60
-                                text-sm
-                            ">
-
+                            <tbody
+                                className="
+                                    divide-y
+                                    divide-slate-800
+                                    bg-slate-900/60
+                                    text-sm
+                                "
+                            >
 
                                 {draft.items.length === 0 ? (
 
@@ -951,15 +1488,15 @@ export default function InvoiceHome() {
                                         <td
                                             colSpan={6}
                                             className="
-                                                py-8
+                                                py-10
                                                 text-center
-                                                text-zinc-500
+                                                text-slate-500
                                                 italic
                                             "
                                         >
 
-                                            No items added to invoice
-                                            draft yet.
+                                            No items added to
+                                            invoice yet.
 
                                         </td>
 
@@ -971,210 +1508,281 @@ export default function InvoiceHome() {
                                         (item) => (
 
                                             <tr
-                                                key={item.id}
+                                                key={
+                                                    item.id
+                                                }
                                                 className="
-                                                    hover:bg-zinc-800/40
+                                                    hover:bg-slate-800/50
                                                     transition-colors
                                                 "
                                             >
 
-
                                                 {/* PRODUCT */}
 
-                                                <td className="
-                                                    py-4
-                                                    px-4
-                                                    font-medium
-                                                    text-zinc-100
-                                                ">
+                                                <td
+                                                    className="
+                                                        py-4
+                                                        px-4
+                                                        font-medium
+                                                        text-white
+                                                    "
+                                                >
 
                                                     {item.name}
 
                                                 </td>
 
+
                                                 {/* QUANTITY */}
 
-                                                <td className="py-4 px-4">
+                                                <td
+                                                    className="
+                                                        py-4
+                                                        px-4
+                                                    "
+                                                >
 
-                                                    <div className="flex items-center justify-center gap-2">
+                                                    <div
+                                                        className="
+                                                            flex
+                                                            items-center
+                                                            justify-center
+                                                            gap-2
+                                                        "
+                                                    >
 
-                                                        {/* MINUS BUTTON */}
+                                                        {/* MINUS */}
 
                                                         <button
                                                             type="button"
                                                             onClick={() => {
 
-                                                                if (item.invoiceQuantity > 1) {
+                                                                if (
+                                                                    item.invoiceQuantity >
+                                                                    1
+                                                                ) {
 
                                                                     dispatch(
+
                                                                         updateQuantity({
-                                                                            productId: item.id,
-                                                                            quantity: item.invoiceQuantity - 1
+
+                                                                            productId:
+                                                                                item.id,
+
+                                                                            quantity:
+                                                                                item.invoiceQuantity -
+                                                                                1
+
                                                                         })
+
                                                                     );
 
                                                                 }
 
                                                             }}
-                                                            disabled={item.invoiceQuantity <= 1}
+                                                            disabled={
+                                                                item.invoiceQuantity <=
+                                                                1
+                                                            }
                                                             className="
-                w-7
-                h-7
-                flex
-                items-center
-                justify-center
-                rounded-md
-                bg-zinc-800
-                hover:bg-zinc-700
-                text-zinc-300
-                hover:text-white
-                font-bold
-                transition-all
-                disabled:opacity-30
-                disabled:cursor-not-allowed
-            "
+                                                                w-7
+                                                                h-7
+                                                                flex
+                                                                items-center
+                                                                justify-center
+                                                                rounded-md
+                                                                bg-slate-800
+                                                                hover:bg-slate-700
+                                                                text-slate-300
+                                                                hover:text-white
+                                                                font-bold
+                                                                transition-all
+                                                                disabled:opacity-30
+                                                                disabled:cursor-not-allowed
+                                                            "
                                                         >
+
                                                             -
+
                                                         </button>
 
 
-                                                        {/* EDITABLE QUANTITY */}
+                                                        {/* QUANTITY INPUT */}
 
                                                         <input
                                                             type="number"
                                                             min="1"
-                                                            value={item.invoiceQuantity}
-                                                            onChange={(e) => {
-
-                                                                const value = e.target.value;
-
-                                                                // Allow user to temporarily clear the field
-                                                                if (value === "") {
-                                                                    return;
-                                                                }
-
-                                                                const quantity = Number(value);
-
-                                                                if (quantity >= 1) {
-
-                                                                    dispatch(
-                                                                        updateQuantity({
-                                                                            productId: item.id,
-                                                                            quantity: quantity
-                                                                        })
-                                                                    );
-
-                                                                }
-
-                                                            }}
+                                                            value={
+                                                                item.invoiceQuantity
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleQuantityChange(
+                                                                    item,
+                                                                    e.target.value
+                                                                )
+                                                            }
                                                             className="
-                w-12
-                h-7
-                text-center
-                font-semibold
-                text-white
-                bg-zinc-800
-                border
-                border-zinc-700
-                rounded-md
-                outline-none
-                focus:border-emerald-500
-                focus:ring-1
-                focus:ring-emerald-500
-                [appearance:textfield]
-                [&:: -webkit-inner-spin-button]: appearance-none
-                [&:: -webkit-inner-outer-button]: appearance-none
-                                       "
+                                                                w-14
+                                                                h-8
+                                                                text-center
+                                                                font-semibold
+                                                                text-white
+                                                                bg-slate-800
+                                                                border
+                                                                border-slate-700
+                                                                rounded-md
+                                                                outline-none
+                                                                focus:border-emerald-500
+                                                                focus:ring-1
+                                                                focus:ring-emerald-500
+                                                            "
                                                         />
 
 
-                                                        {/* PLUS BUTTON */}
+                                                        {/* PLUS */}
 
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleIncrease(item)}
-                                                            disabled={item.invoiceQuantity >= item.quantity}
+                                                            onClick={() =>
+                                                                handleIncrease(
+                                                                    item
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                item.invoiceQuantity >=
+                                                                item.quantity
+                                                            }
                                                             className="
-        w-7 h-7
-        flex items-center justify-center
-        rounded-md
-        bg-zinc-800
-        hover:bg-zinc-700
-        text-zinc-300
-        hover:text-white
-        font-bold
-        transition-all
-        disabled:opacity-30
-        disabled:cursor-not-allowed
-    "
+                                                                w-7
+                                                                h-7
+                                                                flex
+                                                                items-center
+                                                                justify-center
+                                                                rounded-md
+                                                                bg-slate-800
+                                                                hover:bg-slate-700
+                                                                text-slate-300
+                                                                hover:text-white
+                                                                font-bold
+                                                                transition-all
+                                                                disabled:opacity-30
+                                                                disabled:cursor-not-allowed
+                                                            "
                                                         >
+
                                                             +
+
                                                         </button>
 
                                                     </div>
 
                                                 </td>
 
-                                                <td className="py-4 px-4 text-center">
+
+                                                {/* AVAILABLE STOCK */}
+
+                                                <td
+                                                    className="
+                                                        py-4
+                                                        px-4
+                                                        text-center
+                                                    "
+                                                >
+
                                                     <span
-                                                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${item.quantity <= 0
-                                                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                            : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                                            }`}
+                                                        className={`
+                                                            inline-flex
+                                                            items-center
+                                                            px-3
+                                                            py-1
+                                                            rounded-full
+                                                            text-xs
+                                                            font-semibold
+                                                            ${
+                                                                item.quantity <=
+                                                                0
+
+                                                                    ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+
+                                                                    : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                                            }
+                                                        `}
                                                     >
-                                                        {item.quantity}
+
+                                                        {
+                                                            item.quantity
+                                                        }
+
                                                     </span>
-                                                </td>
-
-                                                {/* PRICE */}
-
-                                                <td className="
-                                                    py-4
-                                                    px-4
-                                                    text-right
-                                                    font-medium
-                                                    text-zinc-300
-                                                ">
-
-                                                    {
-                                                        Number(item.salePrice || 0).toLocaleString()
-                                                    }
 
                                                 </td>
 
 
+                                                {/* SALE PRICE */}
 
-                                                {/* TOTAL */}
+                                                <td
+                                                    className="
+                                                        py-4
+                                                        px-4
+                                                        text-right
+                                                        font-medium
+                                                        text-slate-300
+                                                    "
+                                                >
 
-                                                <td className="
-                                                    py-4
-                                                    px-4
-                                                    text-right
-                                                    font-bold
-                                                    text-emerald-400
-                                                ">
+                                                    Rs.{" "}
 
-                                                    {(
-                                                        (Number(item.invoiceQuantity) || 0) *
-                                                        (Number(item.salePrice) || 0)
+                                                    {Number(
+                                                        item.salePrice ||
+                                                        0
                                                     ).toLocaleString()}
 
                                                 </td>
 
 
+                                                {/* TOTAL */}
+
+                                                <td
+                                                    className="
+                                                        py-4
+                                                        px-4
+                                                        text-right
+                                                        font-bold
+                                                        text-emerald-400
+                                                    "
+                                                >
+
+                                                    Rs.{" "}
+
+                                                    {(
+                                                        (
+                                                            Number(
+                                                                item.invoiceQuantity
+                                                            ) || 0
+                                                        ) *
+
+                                                        (
+                                                            Number(
+                                                                item.salePrice
+                                                            ) || 0
+                                                        )
+                                                    ).toLocaleString()}
+
+                                                </td>
+
 
                                                 {/* DELETE */}
 
-                                                <td className="
-                                                    py-4
-                                                    px-4
-                                                    text-center
-                                                ">
+                                                <td
+                                                    className="
+                                                        py-4
+                                                        px-4
+                                                        text-center
+                                                    "
+                                                >
 
                                                     <button
-
                                                         type="button"
-
                                                         onClick={() => {
 
                                                             dispatch(
@@ -1189,23 +1797,18 @@ export default function InvoiceHome() {
                                                             );
 
                                                         }}
-
                                                         className="
-                                                            px-3
-                                                            py-1.5
+                                                            bg-rose-600
+                                                            hover:bg-rose-500
+                                                            text-white
                                                             text-xs
                                                             font-semibold
-                                                            text-rose-400
-                                                            hover:text-rose-300
-                                                            bg-rose-500/10
-                                                            hover:bg-rose-500/20
-                                                            border
-                                                            border-rose-500/20
-                                                            rounded-md
-                                                            transition-all
+                                                            px-3
+                                                            py-1.5
+                                                            rounded-lg
+                                                            transition-colors
                                                             cursor-pointer
                                                         "
-
                                                     >
 
                                                         Delete
@@ -1229,340 +1832,48 @@ export default function InvoiceHome() {
 
 
 
-                    {/* ==========================================
-                        GRAND TOTAL + ACTIONS
-                    ========================================== */}
+                    {/* ==================================================
+                        GRAND TOTAL
+                    ================================================== */}
 
-                    <div className="mt-6 text-center">
+                    <div
+                        className="
+                            mt-6
+                            flex
+                            flex-col
+                            items-center
+                            border-t
+                            border-slate-700
+                            pt-6
+                        "
+                    >
+
+                        <p
+                            className="
+                                text-sm
+                                text-slate-400
+                                mb-1
+                            "
+                        >
+
+                            Grand Total
+
+                        </p>
 
 
-                        <h2 className="
-                            text-2xl
-                            font-bold
-                            text-white
-                        ">
+                        <h2
+                            className="
+                                text-3xl
+                                font-extrabold
+                                text-emerald-400
+                            "
+                        >
 
-                            Grand Total: {grandtotal.toLocaleString()}
+                            Rs.{" "}
+
+                            {grandtotal.toLocaleString()}
 
                         </h2>
-
-                        {/* RECENT INVOICE ACTIVITY */}
-                        <div className="
-        w-full
-        bg-zinc-900
-        border
-        border-zinc-800
-        rounded-2xl
-        p-4
-        sm:p-6
-        shadow-2xl
-        mt-6
-        text-left
-    ">
-
-                            <div className="
-            flex
-            items-center
-            justify-between
-            border-b
-            border-zinc-800
-            pb-3
-            mb-4
-        ">
-
-                                <h2 className="
-                text-lg
-                sm:text-xl
-                font-bold
-                text-white
-                ml-75 bg-zinc-700 px-4 rounded hover:bg-slate-600
-            ">
-                                    Recent Invoice Logs
-                                </h2>
-
-                                <span className="
-                text-xs
-                font-semibold
-                px-2.5
-                py-1
-                bg-blue-500/10
-                border
-                border-blue-500/20
-                text-blue-400
-                rounded-full
-                
-            ">
-                                    {invoiceLogs.length} Activities
-                                </span>
-
-                            </div>
-
-
-                            <div className="
-            overflow-x-auto
-            rounded-xl
-            border
-            border-zinc-800
-        ">
-
-                                <table className="w-full text-left border-collapse">
-
-                                    <thead>
-
-                                        <tr className="
-                        bg-zinc-950
-                        text-zinc-400
-                        text-xs
-                        font-semibold
-                        uppercase
-                        tracking-wider
-                        border-b
-                        border-zinc-800
-                    ">
-
-                                            <th className="py-3 px-4">
-                                                Invoice ID
-                                            </th>
-
-                                            <th className="py-3 px-4">
-                                                Customer
-                                            </th>
-
-                                            <th className="py-3 px-4 text-center">
-                                                Action Done
-                                            </th>
-
-                                            <th className="py-3 px-4 text-right">
-                                                Total
-                                            </th>
-
-                                            <th className="py-3 px-4">
-                                                Time
-                                            </th>
-
-                                            <th className="py-3 px-4">
-                                                Actions
-                                            </th>
-
-
-                                        </tr>
-
-                                    </thead>
-
-
-                                    <tbody className="divide-y divide-zinc-800">
-
-                                        {invoiceLogs.length === 0 ? (
-
-                                            <tr>
-
-                                                <td
-                                                    colSpan={6}
-                                                    className="
-                                    py-8
-                                    text-center
-                                    text-zinc-500
-                                    italic
-                                "
-                                                >
-                                                    No recent invoice activity.
-                                                </td>
-
-                                            </tr>
-
-                                        ) : (
-
-                                            invoiceLogs
-                                                .slice(0, 10)
-                                                .map((log) => (
-
-                                                    <tr
-                                                        key={log.logId}
-                                                        className="
-                                        hover:bg-zinc-800/40
-                                        transition-colors
-                                    "
-                                                    >
-
-                                                        <td className="
-                                        py-3
-                                        px-4
-                                        font-mono
-                                        text-zinc-300
-                                    ">
-                                                            {log.invoiceId}
-                                                        </td>
-
-
-                                                        <td className="
-                                        py-3
-                                        px-4
-                                        text-zinc-100
-                                    ">
-                                                            {log.customerName}
-                                                        </td>
-
-
-                                                        <td className="
-                                        py-3
-                                        px-4
-                                        text-center
-                                    ">
-
-                                                            <span
-                                                                className={
-                                                                    log.action === "Added"
-                                                                        ? `
-                                                        inline-flex
-                                                        px-2.5
-                                                        py-1
-                                                        rounded-full
-                                                        text-xs
-                                                        font-semibold
-                                                        bg-emerald-500/10
-                                                        text-emerald-400
-                                                        border
-                                                        border-emerald-500/20
-                                                    `
-                                                                        : `
-                                                        inline-flex
-                                                        px-2.5
-                                                        py-1
-                                                        rounded-full
-                                                        text-xs
-                                                        font-semibold
-                                                        bg-rose-500/10
-                                                        text-rose-400
-                                                        border
-                                                        border-rose-500/20
-                                                    `
-                                                                }
-                                                            >
-                                                                {log.action}
-                                                            </span>
-
-                                                        </td>
-
-
-                                                        <td className="
-                                        py-3
-                                        px-4
-                                        text-right
-                                        font-semibold
-                                        text-emerald-400
-                                    ">
-                                                            {log.total?.toLocaleString() ?? 0}
-                                                        </td>
-
-
-                                                        <td className="
-                                        py-3
-                                        px-4
-                                        text-zinc-500
-                                        text-sm
-                                    ">
-                                                            {log.timestamp}
-                                                        </td>
-
-                                                        <td className="py-3 px-4 text-center">
-
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => deleteInvoiceLog(log.logId)}
-                                                                className="
-            bg-rose-600
-            hover:bg-rose-500
-            text-white
-            text-xs
-            font-semibold
-            px-3
-            py-1.5
-            rounded-lg
-            transition-colors
-        "
-                                                            >
-                                                                Delete
-                                                            </button>
-
-                                                        </td>
-
-                                                    </tr>
-
-                                                ))
-
-                                        )}
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-                        </div>
-
-
-
-
-
-
-                        {/* SAVE */}
-
-                        <button
-
-                            type="button"
-
-                            onClick={handleSaveInvoice}
-
-                            className="
-                                mt-4
-                                mr-3
-                                bg-green-400
-                                hover:bg-green-800
-                                text-white
-                                px-6
-                                py-3
-                                rounded-lg
-                            "
-
-                        >
-
-                            Create Invoice
-
-                        </button>
-
-
-
-                        {/* CLEAR */}
-
-                        <button
-
-                            type="button"
-
-                            onClick={() => {
-
-                                dispatch(clearDraft());
-
-                                setProductSearch("");
-
-                                setSelectedProduct("");
-
-                            }}
-
-                            className="
-                                mt-4
-                                bg-red-400
-                                hover:bg-red-800
-                                text-white
-                                px-6
-                                py-3
-                                rounded-lg
-                            "
-
-                        >
-
-                            Clear Invoice
-
-                        </button>
 
                     </div>
 
@@ -1570,81 +1881,500 @@ export default function InvoiceHome() {
 
 
 
-                {/* ==========================================
-                    NAVIGATION BUTTONS
-                ========================================== */}
+                {/* ==================================================
+                    RECENT ACTIVITY
+                ================================================== */}
 
-                <div className="
-                    flex
-                    flex-col
-                    sm:flex-row
-                    items-center
-                    justify-center
-                    gap-4
-                    w-full
-                    max-w-md
-                    pt-2
-                ">
+                <div
+                    className="
+                        w-full
+                        rounded-2xl
+                        border
+                        border-slate-700/70
+                        bg-slate-900/70
+                        backdrop-blur-md
+                        shadow-xl
+                        p-5
+                        sm:p-6
+                    "
+                >
 
+                    <div
+                        className="
+                            flex
+                            flex-col
+                            sm:flex-row
+                            sm:items-center
+                            sm:justify-between
+                            gap-3
+                            border-b
+                            border-slate-700
+                            pb-4
+                            mb-5
+                        "
+                    >
+
+                        <h2
+                            className="
+                                text-xl
+                                font-bold
+                                text-white
+                            "
+                        >
+
+                            Recent Invoice Logs
+
+                        </h2>
+
+
+                        <span
+                            className="
+                                w-fit
+                                text-xs
+                                font-semibold
+                                px-3
+                                py-1
+                                bg-blue-500/10
+                                border
+                                border-blue-500/20
+                                text-blue-400
+                                rounded-full
+                            "
+                        >
+
+                            {invoiceLogs.length} Activities
+
+                        </span>
+
+                    </div>
+
+
+
+                    <div
+                        className="
+                            overflow-x-auto
+                            rounded-xl
+                            border
+                            border-slate-700/80
+                        "
+                    >
+
+                        <table
+                            className="
+                                w-full
+                                text-left
+                                border-collapse
+                                min-w-[800px]
+                            "
+                        >
+
+                            <thead>
+
+                                <tr
+                                    className="
+                                        bg-slate-950
+                                        text-slate-400
+                                        text-xs
+                                        font-semibold
+                                        uppercase
+                                        tracking-wider
+                                        border-b
+                                        border-slate-700
+                                    "
+                                >
+
+                                    <th className="py-3 px-4">
+                                        Invoice ID
+                                    </th>
+
+                                    <th className="py-3 px-4">
+                                        Customer
+                                    </th>
+
+                                    <th className="py-3 px-4 text-center">
+                                        Action
+                                    </th>
+
+                                    <th className="py-3 px-4 text-right">
+                                        Total
+                                    </th>
+
+                                    <th className="py-3 px-4">
+                                        Time
+                                    </th>
+
+                                    <th className="py-3 px-4 text-center">
+                                        Actions
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody
+                                className="
+                                    divide-y
+                                    divide-slate-800
+                                    bg-slate-900/60
+                                "
+                            >
+
+                                {invoiceLogs.length === 0 ? (
+
+                                    <tr>
+
+                                        <td
+                                            colSpan={6}
+                                            className="
+                                                py-8
+                                                text-center
+                                                text-slate-500
+                                                italic
+                                            "
+                                        >
+
+                                            No recent invoice activity.
+
+                                        </td>
+
+                                    </tr>
+
+                                ) : (
+
+                                    invoiceLogs
+                                        .slice(0, 10)
+                                        .map(
+                                            (log) => (
+
+                                                <tr
+                                                    key={
+                                                        log.logId
+                                                    }
+                                                    className="
+                                                        hover:bg-slate-800/50
+                                                        transition-colors
+                                                    "
+                                                >
+
+                                                    <td
+                                                        className="
+                                                            py-3
+                                                            px-4
+                                                            font-mono
+                                                            text-slate-300
+                                                        "
+                                                    >
+
+                                                        {
+                                                            log.invoiceId
+                                                        }
+
+                                                    </td>
+
+
+                                                    <td
+                                                        className="
+                                                            py-3
+                                                            px-4
+                                                            text-white
+                                                        "
+                                                    >
+
+                                                        {
+                                                            log.customerName
+                                                        }
+
+                                                    </td>
+
+
+                                                    <td
+                                                        className="
+                                                            py-3
+                                                            px-4
+                                                            text-center
+                                                        "
+                                                    >
+
+                                                        <span
+                                                            className={`
+                                                                inline-flex
+                                                                px-2.5
+                                                                py-1
+                                                                rounded-full
+                                                                text-xs
+                                                                font-semibold
+                                                                ${
+                                                                    log.action ===
+                                                                    "Added"
+
+                                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+
+                                                                        : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                                                }
+                                                            `}
+                                                        >
+
+                                                            {
+                                                                log.action
+                                                            }
+
+                                                        </span>
+
+                                                    </td>
+
+
+                                                    <td
+                                                        className="
+                                                            py-3
+                                                            px-4
+                                                            text-right
+                                                            font-semibold
+                                                            text-emerald-400
+                                                        "
+                                                    >
+
+                                                        Rs.{" "}
+
+                                                        {Number(
+                                                            log.total ||
+                                                            0
+                                                        ).toLocaleString()}
+
+                                                    </td>
+
+
+                                                    <td
+                                                        className="
+                                                            py-3
+                                                            px-4
+                                                            text-slate-500
+                                                            text-sm
+                                                        "
+                                                    >
+
+                                                        {
+                                                            log.timestamp
+                                                        }
+
+                                                    </td>
+
+
+                                                    <td
+                                                        className="
+                                                            py-3
+                                                            px-4
+                                                            text-center
+                                                        "
+                                                    >
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                deleteInvoiceLog(
+                                                                    log.logId
+                                                                )
+                                                            }
+                                                            className="
+                                                                bg-rose-600
+                                                                hover:bg-rose-500
+                                                                text-white
+                                                                text-xs
+                                                                font-semibold
+                                                                px-3
+                                                                py-1.5
+                                                                rounded-lg
+                                                                transition-colors
+                                                            "
+                                                        >
+
+                                                            Delete
+
+                                                        </button>
+
+                                                    </td>
+
+                                                </tr>
+
+                                            )
+                                        )
+
+                                )}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+
+
+                {/* ==================================================
+                    MAIN ACTIONS
+                ================================================== */}
+
+                <div
+                    className="
+                        w-full
+                        flex
+                        flex-col
+                        sm:flex-row
+                        justify-center
+                        items-center
+                        gap-3
+                    "
+                >
+
+                    {/* CREATE */}
 
                     <button
-
-                        onClick={() =>
-                            router.push("/Home")
+                        type="button"
+                        onClick={
+                            handleSaveInvoice
                         }
-
                         className="
                             w-full
                             sm:w-auto
-                            min-h-[48px]
-                            justify-center
-                            bg-yellow-400
-                            hover:bg-yellow-700
+                            bg-emerald-700
+                            hover:bg-emerald-600
+                            active:bg-emerald-800
                             text-white
                             font-semibold
-                            text-sm
-                            px-6
+                            px-7
+                            py-3
                             rounded-lg
                             shadow-lg
                             transition-all
+                            duration-200
+                            hover:-translate-y-0.5
                             cursor-pointer
-                            flex
-                            items-center
-                            gap-2
                         "
+                    >
 
+                        Create Invoice
+
+                    </button>
+
+
+                    {/* CLEAR */}
+
+                    <button
+                        type="button"
+                        onClick={() => {
+
+                            dispatch(
+                                clearDraft()
+                            );
+
+                            setProductSearch("");
+
+                            setSelectedProduct("");
+
+                        }}
+                        className="
+                            w-full
+                            sm:w-auto
+                            bg-rose-600
+                            hover:bg-rose-500
+                            text-white
+                            font-semibold
+                            px-7
+                            py-3
+                            rounded-lg
+                            shadow-lg
+                            transition-all
+                            duration-200
+                            hover:-translate-y-0.5
+                            cursor-pointer
+                        "
+                    >
+
+                        Clear Invoice
+
+                    </button>
+
+                </div>
+
+
+
+                {/* ==================================================
+                    NAVIGATION
+                ================================================== */}
+
+                <div
+                    className="
+                        w-full
+                        flex
+                        flex-col
+                        sm:flex-row
+                        justify-center
+                        items-center
+                        gap-3
+                        pt-2
+                    "
+                >
+
+                    {/* HOME */}
+
+                    <button
+                        type="button"
+                        onClick={() =>
+                            router.push(
+                                "/Home"
+                            )
+                        }
+                        className="
+                            w-full
+                            sm:w-auto
+                            bg-yellow-600
+                            hover:bg-yellow-500
+                            text-white
+                            font-semibold
+                            px-7
+                            py-3
+                            rounded-lg
+                            shadow-lg
+                            transition-all
+                            duration-200
+                            hover:-translate-y-0.5
+                            cursor-pointer
+                        "
                     >
 
                         Go to Home Page
 
                     </button>
 
+
+                    {/* INVOICE DASHBOARD */}
+
                     <button
-
+                        type="button"
                         onClick={() =>
-                            router.push("/Invoices")
+                            router.push(
+                                "/Invoices"
+                            )
                         }
-
                         className="
                             w-full
                             sm:w-auto
-                            min-h-[48px]
-                            justify-center
-                            bg-yellow-400
-                            hover:bg-yellow-700
+                            bg-slate-700
+                            hover:bg-slate-600
                             text-white
                             font-semibold
-                            text-sm
-                            px-6
+                            px-7
+                            py-3
                             rounded-lg
+                            border
+                            border-slate-600
                             shadow-lg
                             transition-all
+                            duration-200
+                            hover:-translate-y-0.5
                             cursor-pointer
-                            flex
-                            items-center
-                            gap-2
                         "
-
                     >
 
                         Go to Invoice Page

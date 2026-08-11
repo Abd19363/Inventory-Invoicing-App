@@ -9,7 +9,6 @@ import {
 
 import * as Yup from "yup";
 
-
 // ========================================
 // VALIDATION SCHEMA
 // ========================================
@@ -46,7 +45,6 @@ const validationSchema = Yup.object({
 
 });
 
-
 // ========================================
 // INVENTORY FORM
 // ========================================
@@ -55,9 +53,6 @@ export default function InventoryForm({
     initialValues,
     onSubmit,
 }) {
-
-    // Make sure all fields always have a value.
-    // This prevents uncontrolled -> controlled input warnings.
 
     const defaultValues = {
 
@@ -147,7 +142,6 @@ export default function InventoryForm({
 
             {({ values }) => {
 
-
                 // ========================================
                 // AUTOMATIC SALE PRICE
                 // ========================================
@@ -178,48 +172,23 @@ export default function InventoryForm({
 
                 return (
 
-                    <Form
-                        className="
-                            max-w-lg
-                            mx-auto
-                            mt-10
-                            bg-teal-100
-                            shadow-lg
-                            rounded-lg
-                            p-8
-                        "
-                    >
-
-                        {/* ================================= */}
-                        {/* HEADING */}
-                        {/* ================================= */}
-
-                        <h2
-                            className="
-                                text-3xl
-                                font-bold
-                                text-center
-                                text-blue-700
-                                mb-8
-                            "
-                        >
-                            Product Details
-                        </h2>
+                    <Form className="space-y-6">
 
 
                         {/* ================================= */}
                         {/* PRODUCT NAME */}
                         {/* ================================= */}
 
-                        <div className="mb-5">
+                        <div>
 
                             <label
+                                htmlFor="name"
                                 className="
                                     block
+                                    text-sm
+                                    font-medium
+                                    text-slate-300
                                     mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
                                 "
                             >
                                 Product Name
@@ -227,26 +196,26 @@ export default function InventoryForm({
 
 
                             <Field
+                                id="name"
                                 type="text"
                                 name="name"
                                 placeholder="Enter product name"
                                 className="
                                     w-full
+                                    rounded-xl
                                     border
-                                    border-gray-300
-                                    rounded-md
-                                    p-3
-                                    focus:outline-none
-                                    focus:ring-2
-                                    focus:ring-blue-500
-                                    bg-black
+                                    border-slate-700
+                                    bg-slate-950
+                                    px-4
+                                    py-3
+                                    text-white
+                                    placeholder-slate-500
+                                    outline-none
                                     transition-all
-                                    duration-300
-                                    ease-in-out
-                                    hover:translate-x-2
-                                    hover:border-4
-                                    hover:border-blue-300
-                                    text-center
+                                    duration-200
+                                    focus:border-emerald-500
+                                    focus:ring-2
+                                    focus:ring-emerald-500/20
                                 "
                             />
 
@@ -255,9 +224,9 @@ export default function InventoryForm({
                                 name="name"
                                 component="div"
                                 className="
-                                    text-red-600
+                                    mt-1.5
                                     text-sm
-                                    mt-1
+                                    text-rose-400
                                 "
                             />
 
@@ -268,15 +237,16 @@ export default function InventoryForm({
                         {/* CATEGORY */}
                         {/* ================================= */}
 
-                        <div className="mb-5">
+                        <div>
 
                             <label
+                                htmlFor="category"
                                 className="
                                     block
+                                    text-sm
+                                    font-medium
+                                    text-slate-300
                                     mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
                                 "
                             >
                                 Category
@@ -284,26 +254,26 @@ export default function InventoryForm({
 
 
                             <Field
+                                id="category"
                                 type="text"
                                 name="category"
                                 placeholder="Enter category"
                                 className="
                                     w-full
+                                    rounded-xl
                                     border
-                                    border-gray-300
-                                    rounded-md
-                                    p-3
-                                    focus:outline-none
-                                    focus:ring-2
-                                    focus:ring-blue-500
-                                    bg-black
+                                    border-slate-700
+                                    bg-slate-950
+                                    px-4
+                                    py-3
+                                    text-white
+                                    placeholder-slate-500
+                                    outline-none
                                     transition-all
-                                    duration-300
-                                    ease-in-out
-                                    hover:translate-x-2
-                                    hover:border-4
-                                    hover:border-blue-300
-                                    text-center
+                                    duration-200
+                                    focus:border-emerald-500
+                                    focus:ring-2
+                                    focus:ring-emerald-500/20
                                 "
                             />
 
@@ -312,9 +282,9 @@ export default function InventoryForm({
                                 name="category"
                                 component="div"
                                 className="
-                                    text-red-600
+                                    mt-1.5
                                     text-sm
-                                    mt-1
+                                    text-rose-400
                                 "
                             />
 
@@ -325,15 +295,16 @@ export default function InventoryForm({
                         {/* QUANTITY */}
                         {/* ================================= */}
 
-                        <div className="mb-5">
+                        <div>
 
                             <label
+                                htmlFor="quantity"
                                 className="
                                     block
+                                    text-sm
+                                    font-medium
+                                    text-slate-300
                                     mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
                                 "
                             >
                                 Quantity
@@ -341,26 +312,26 @@ export default function InventoryForm({
 
 
                             <Field
+                                id="quantity"
                                 type="number"
                                 name="quantity"
                                 placeholder="Enter quantity"
                                 className="
                                     w-full
+                                    rounded-xl
                                     border
-                                    border-gray-300
-                                    rounded-md
-                                    p-3
-                                    focus:outline-none
-                                    focus:ring-2
-                                    focus:ring-blue-500
-                                    bg-black
+                                    border-slate-700
+                                    bg-slate-950
+                                    px-4
+                                    py-3
+                                    text-white
+                                    placeholder-slate-500
+                                    outline-none
                                     transition-all
-                                    duration-300
-                                    ease-in-out
-                                    hover:translate-x-2
-                                    hover:border-4
-                                    hover:border-blue-300
-                                    text-center
+                                    duration-200
+                                    focus:border-emerald-500
+                                    focus:ring-2
+                                    focus:ring-emerald-500/20
                                 "
                             />
 
@@ -369,9 +340,9 @@ export default function InventoryForm({
                                 name="quantity"
                                 component="div"
                                 className="
-                                    text-red-600
+                                    mt-1.5
                                     text-sm
-                                    mt-1
+                                    text-rose-400
                                 "
                             />
 
@@ -379,115 +350,123 @@ export default function InventoryForm({
 
 
                         {/* ================================= */}
-                        {/* PURCHASE PRICE */}
+                        {/* PRICE GRID */}
                         {/* ================================= */}
 
-                        <div className="mb-5">
-
-                            <label
-                                className="
-                                    block
-                                    mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
-                                "
-                            >
-                                Purchase Price
-                            </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
 
-                            <Field
-                                type="number"
-                                name="purchasePrice"
-                                placeholder="Enter purchase price"
-                                className="
-                                    w-full
-                                    border
-                                    border-gray-300
-                                    rounded-md
-                                    p-3
-                                    focus:outline-none
-                                    focus:ring-2
-                                    focus:ring-blue-500
-                                    bg-black
-                                    transition-all
-                                    duration-300
-                                    ease-in-out
-                                    hover:translate-x-2
-                                    hover:border-4
-                                    hover:border-blue-300
-                                    text-center
-                                "
-                            />
+                            {/* PURCHASE PRICE */}
+
+                            <div>
+
+                                <label
+                                    htmlFor="purchasePrice"
+                                    className="
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-slate-300
+                                        mb-2
+                                    "
+                                >
+                                    Purchase Price
+                                </label>
 
 
-                            <ErrorMessage
-                                name="purchasePrice"
-                                component="div"
-                                className="
-                                    text-red-500
-                                    text-sm
-                                    mt-1
-                                "
-                            />
-
-                        </div>
-
-
-                        {/* ================================= */}
-                        {/* RETAIL PRICE */}
-                        {/* ================================= */}
-
-                        <div className="mb-5">
-
-                            <label
-                                className="
-                                    block
-                                    mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
-                                "
-                            >
-                                Retail Price
-                            </label>
+                                <Field
+                                    id="purchasePrice"
+                                    type="number"
+                                    name="purchasePrice"
+                                    placeholder="Enter purchase price"
+                                    className="
+                                        w-full
+                                        rounded-xl
+                                        border
+                                        border-slate-700
+                                        bg-slate-950
+                                        px-4
+                                        py-3
+                                        text-white
+                                        placeholder-slate-500
+                                        outline-none
+                                        transition-all
+                                        duration-200
+                                        focus:border-emerald-500
+                                        focus:ring-2
+                                        focus:ring-emerald-500/20
+                                    "
+                                />
 
 
-                            <Field
-                                type="number"
-                                name="retailPrice"
-                                placeholder="Enter retail price"
-                                className="
-                                    w-full
-                                    border
-                                    border-gray-300
-                                    rounded-md
-                                    p-3
-                                    focus:outline-none
-                                    focus:ring-2
-                                    focus:ring-blue-500
-                                    bg-black
-                                    transition-all
-                                    duration-300
-                                    ease-in-out
-                                    hover:translate-x-2
-                                    hover:border-4
-                                    hover:border-blue-300
-                                    text-center
-                                "
-                            />
+                                <ErrorMessage
+                                    name="purchasePrice"
+                                    component="div"
+                                    className="
+                                        mt-1.5
+                                        text-sm
+                                        text-rose-400
+                                    "
+                                />
+
+                            </div>
 
 
-                            <ErrorMessage
-                                name="retailPrice"
-                                component="div"
-                                className="
-                                    text-red-500
-                                    text-sm
-                                    mt-1
-                                "
-                            />
+                            {/* RETAIL PRICE */}
+
+                            <div>
+
+                                <label
+                                    htmlFor="retailPrice"
+                                    className="
+                                        block
+                                        text-sm
+                                        font-medium
+                                        text-slate-300
+                                        mb-2
+                                    "
+                                >
+                                    Retail Price
+                                </label>
+
+
+                                <Field
+                                    id="retailPrice"
+                                    type="number"
+                                    name="retailPrice"
+                                    placeholder="Enter retail price"
+                                    className="
+                                        w-full
+                                        rounded-xl
+                                        border
+                                        border-slate-700
+                                        bg-slate-950
+                                        px-4
+                                        py-3
+                                        text-white
+                                        placeholder-slate-500
+                                        outline-none
+                                        transition-all
+                                        duration-200
+                                        focus:border-emerald-500
+                                        focus:ring-2
+                                        focus:ring-emerald-500/20
+                                    "
+                                />
+
+
+                                <ErrorMessage
+                                    name="retailPrice"
+                                    component="div"
+                                    className="
+                                        mt-1.5
+                                        text-sm
+                                        text-rose-400
+                                    "
+                                />
+
+                            </div>
+
 
                         </div>
 
@@ -496,15 +475,16 @@ export default function InventoryForm({
                         {/* DISCOUNT */}
                         {/* ================================= */}
 
-                        <div className="mb-5">
+                        <div>
 
                             <label
+                                htmlFor="discount"
                                 className="
                                     block
+                                    text-sm
+                                    font-medium
+                                    text-slate-300
                                     mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
                                 "
                             >
                                 Discount (%)
@@ -512,26 +492,26 @@ export default function InventoryForm({
 
 
                             <Field
+                                id="discount"
                                 type="number"
                                 name="discount"
                                 placeholder="Enter discount percentage"
                                 className="
                                     w-full
+                                    rounded-xl
                                     border
-                                    border-gray-300
-                                    rounded-md
-                                    p-3
-                                    focus:outline-none
-                                    focus:ring-2
-                                    focus:ring-blue-500
-                                    bg-black
+                                    border-slate-700
+                                    bg-slate-950
+                                    px-4
+                                    py-3
+                                    text-white
+                                    placeholder-slate-500
+                                    outline-none
                                     transition-all
-                                    duration-300
-                                    ease-in-out
-                                    hover:translate-x-2
-                                    hover:border-4
-                                    hover:border-blue-300
-                                    text-center
+                                    duration-200
+                                    focus:border-emerald-500
+                                    focus:ring-2
+                                    focus:ring-emerald-500/20
                                 "
                             />
 
@@ -540,9 +520,9 @@ export default function InventoryForm({
                                 name="discount"
                                 component="div"
                                 className="
-                                    text-red-500
+                                    mt-1.5
                                     text-sm
-                                    mt-1
+                                    text-rose-400
                                 "
                             />
 
@@ -550,61 +530,57 @@ export default function InventoryForm({
 
 
                         {/* ================================= */}
-                        {/* SALE PRICE */}
+                        {/* CALCULATED VALUES */}
                         {/* ================================= */}
 
-                        <div className="mb-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-                            <label
-                                className="
-                                    block
-                                    mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
-                                "
-                            >
-                                Sale Price
-                            </label>
 
+                            {/* SALE PRICE */}
 
                             <div
-                                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black transition-all duration-300 ease-in-out hover:translate-x-2 hover:border-4 hover:border-blue-300 text-center "
+                                className="
+                                    rounded-xl
+                                    border
+                                    border-emerald-500/20
+                                    bg-emerald-500/5
+                                    p-4
+                                "
                             >
 
-                                {salePrice.toLocaleString()}
+                                <p className="text-sm text-slate-400">
+                                    Sale Price
+                                </p>
+
+                                <p className="mt-1 text-2xl font-bold text-emerald-400">
+                                    {salePrice.toLocaleString()}
+                                </p>
 
                             </div>
 
-                        </div>
 
-
-                        {/* ================================= */}
-                        {/* TOTAL INVENTORY VALUE */}
-                        {/* ================================= */}
-
-                        <div className="mb-6">
-
-                            <label
-                                className="
-                                    block
-                                    mb-2
-                                    font-semibold
-                                    text-gray-700
-                                    text-center
-                                "
-                            >
-                                Total Inventory Value
-                            </label>
-
+                            {/* TOTAL VALUE */}
 
                             <div
-                                className="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black transition-all duration-300 ease-in-out hover:translate-x-2 hover:border-4 hover:border-blue-300 text-center "
+                                className="
+                                    rounded-xl
+                                    border
+                                    border-slate-700
+                                    bg-slate-950
+                                    p-4
+                                "
                             >
 
-                                {totalValue.toLocaleString()}
+                                <p className="text-sm text-slate-400">
+                                    Total Inventory Value
+                                </p>
+
+                                <p className="mt-1 text-2xl font-bold text-white">
+                                    {totalValue.toLocaleString()}
+                                </p>
 
                             </div>
+
 
                         </div>
 
@@ -617,14 +593,22 @@ export default function InventoryForm({
                             type="submit"
                             className="
                                 w-full
-                                bg-blue-400
-                                text-white
+                                rounded-xl
+                                bg-emerald-600
+                                px-6
                                 py-3
-                                rounded-md
                                 font-semibold
-                                hover:bg-blue-800
-                                transition
-                                duration-300
+                                text-white
+                                shadow-lg
+                                shadow-emerald-600/20
+                                transition-all
+                                duration-200
+                                hover:bg-emerald-500
+                                hover:-translate-y-0.5
+                                active:translate-y-0
+                                focus:outline-none
+                                focus:ring-2
+                                focus:ring-emerald-500/50
                             "
                         >
                             Add Product
