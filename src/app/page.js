@@ -2,11 +2,111 @@
 
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
+import { getItems } from "@/Services/inventoryService";
+import { getInvoices } from "@/Services/invoicesService";
+
 
 export default function LandingPage() {
   const router = useRouter();
 
   useAuth();
+
+  const [dashboardData, setDashboardData] = useState({
+    inventoryValue: 0,
+    stockItems: 0,
+    invoices: 0,
+    revenueYTD: 0,
+  });
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        const [inventory, invoices] = await Promise.all([
+          getItems(),
+          getInvoices(),
+        ]);
+
+        // ==============================
+        // INVENTORY VALUE
+        // ==============================
+
+        const inventoryValue = inventory.reduce(
+          (total, item) => {
+            const quantity = Number(item.quantity) || 0;
+            const purchasePrice =
+              Number(item.purchasePrice) || 0;
+
+            return total + quantity * purchasePrice;
+          },
+          0
+        );
+
+        // ==============================
+        // TOTAL STOCK ITEMS
+        // ==============================
+
+        const stockItems = inventory.reduce(
+          (total, item) => {
+            return total + (Number(item.quantity) || 0);
+          },
+          0
+        );
+
+        // ==============================
+        // TOTAL INVOICES
+        // ==============================
+
+        const invoiceCount = invoices.length;
+
+        // ==============================
+        // REVENUE YTD
+        // ==============================
+
+        const currentYear = new Date().getFullYear();
+
+        const revenueYTD = invoices.reduce(
+          (total, invoice) => {
+
+            if (!invoice.date) {
+              return total;
+            }
+
+            const invoiceDate = new Date(
+              invoice.date
+            );
+
+            if (
+              invoiceDate.getFullYear() === currentYear
+            ) {
+              return (
+                total +
+                (Number(invoice.total) || 0)
+              );
+            }
+
+            return total;
+          },
+          0
+        );
+
+        setDashboardData({
+          inventoryValue,
+          stockItems,
+          invoices: invoiceCount,
+          revenueYTD,
+        });
+
+      } catch (error) {
+        console.error(
+          "Failed to load dashboard data:",
+          error
+        );
+      }
+    }
+
+    loadDashboardData();
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#051424] text-[#d4e4fa] overflow-hidden">
@@ -145,69 +245,70 @@ export default function LandingPage() {
             {/* Preview */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
 
-              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42]">
+              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42] hover:border-[#4edea3]">
 
                 <p className="text-xs text-[#bbcabf]">
                   Inventory Value
                 </p>
 
                 <p className="text-2xl font-bold mt-2">
-                  $1.24M
+                  Rs.{" "}
+                  {dashboardData.inventoryValue.toLocaleString()}
                 </p>
 
                 <p className="text-xs text-[#4edea3] mt-2">
-                  ↑ 4.2% this month
+                  Inventory at purchase Cost
                 </p>
 
               </div>
 
 
-              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42]">
+              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42] hover:border-[#ffb95f]">
 
                 <p className="text-xs text-[#bbcabf]">
                   Stock Items
                 </p>
 
                 <p className="text-2xl font-bold mt-2">
-                  12,450
+                  {dashboardData.stockItems.toLocaleString()}
                 </p>
 
                 <p className="text-xs text-[#ffb95f] mt-2">
-                  85% capacity
+                  Total Quantity in Stock
                 </p>
 
               </div>
 
-
-              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42]">
+              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42] hover:border-[#ffb4ab]">
 
                 <p className="text-xs text-[#bbcabf]">
                   Invoices
                 </p>
 
                 <p className="text-2xl font-bold mt-2">
-                  42
+                  {dashboardData.invoices.toLocaleString()}
                 </p>
 
                 <p className="text-xs text-[#ffb4ab] mt-2">
-                  $84,200 pending
+                  Total Invoices generated
                 </p>
 
               </div>
 
 
-              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42]">
+              <div className="md:col-span-1 bg-[#1c2b3c] rounded-lg p-5 border border-[#3c4a42] hover:border-[#E8F5E9]">
 
                 <p className="text-xs text-[#bbcabf]">
                   Revenue YTD
                 </p>
 
                 <p className="text-2xl font-bold mt-2">
-                  $3.8M
+                  Rs.{" "}
+                  {dashboardData.revenueYTD.toLocaleString()}
                 </p>
 
-                <p className="text-xs text-[#4edea3] mt-2">
-                  ↑ 12% YoY
+                <p className="text-xs text-[#E8F5E9] mt-2">
+                  Revenue generated this year
                 </p>
 
               </div>
