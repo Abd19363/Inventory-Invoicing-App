@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.database import Base, engine
 from app import models
-from app.routers import auth, suppliers, products, inventory, dashboard
+from app.routers import auth, suppliers, products,  dashboard
 
 app = FastAPI(
     title="Inventory Store API"
@@ -21,7 +21,6 @@ app.include_router(
 app.include_router(suppliers.router)
 app.include_router(products.router)
 app.include_router(dashboard.router)
-app.include_router(inventory.router)
 
 
 @app.get("/")
