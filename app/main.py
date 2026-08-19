@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.database import Base, engine
 from app import models
-from app.routers import auth, suppliers, products
+from app.routers import auth, suppliers, products, inventory
 
 
 app = FastAPI(
@@ -21,6 +21,7 @@ app.include_router(
 
 app.include_router(suppliers.router)
 app.include_router(products.router)
+app.include_router(inventory.router)
 
 
 @app.get("/")
