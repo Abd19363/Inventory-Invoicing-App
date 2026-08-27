@@ -18,6 +18,11 @@ class Product(Base):
         nullable=False
     )
 
+    category: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True
+    )
+
     description: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True
@@ -32,6 +37,17 @@ class Product(Base):
     purchase_price: Mapped[float] = mapped_column(
         Numeric(12, 2),
         nullable=False
+    )
+
+    retail_price: Mapped[float] = mapped_column(
+        Numeric(12, 2),
+        nullable=False
+    )
+
+    discount: Mapped[float] = mapped_column(
+        Numeric(5, 2),
+        nullable=False,
+        default=0
     )
 
     sale_price: Mapped[float] = mapped_column(

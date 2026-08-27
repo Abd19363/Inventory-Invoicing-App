@@ -1,16 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from sqlalchemy.orm import Session
+from decimal import Decimal
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Form,
+)
+
 from fastapi.responses import Response
 
+from sqlalchemy.orm import Session
+
 from app.database import get_db
+
 from app.schemas.product import (
     ProductCreate,
     ProductUpdate,
-    ProductResponse
+    ProductResponse,
 )
-from app.services import product_service, supplier_service, product_image_service
-from app.models.product_image import ProductImage
 
+from app.services import (
+    product_service,
+    supplier_service,
+    product_image_service,
+)
+from app.core.dependencies import require_admin
+from app.models.user import User
 
 
 router = APIRouter(
@@ -19,70 +37,233 @@ router = APIRouter(
 )
 
 
-# ==========================================
+# =========================================================
 # CREATE PRODUCT
-# ==========================================
+# =========================================================
 
 @router.post(
     "",
     response_model=ProductResponse,
     status_code=status.HTTP_201_CREATED
 )
-def create_product(
-    product_data: ProductCreate,
-    db: Session = Depends(get_db)
+async def create_product(
+
+    name: str = Form(...),
+
+    category: str | None = Form(None),
+
+    description: str | None = Form(None),
+
+    quantity: int = Form(0),
+
+    purchase_price: Decimal = Form(...),
+
+    retail_price: Decimal = Form(...),
+
+    discount: Decimal = Form(0),
+
+    sale_price: Decimal = Form(...),
+
+    supplier_id: int | None = Form(None),
+
+    image: UploadFile | None = File(None),
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_admin),
 ):
 
-    # Validate supplier if one was provided
-    if product_data.supplier_id is not None:
+    # =====================================================
+    # VALIDATE SUPPLIER
+    # =====================================================
+
+    if supplier_id is not None:
 
         supplier = supplier_service.get_supplier(
             db,
-            product_data.supplier_id
+            supplier_id
         )
 
         if not supplier:
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Supplier not found"
             )
 
-    # Validate quantity
-    if product_data.quantity < 0:
+    # =====================================================
+    # VALIDATE PRODUCT DATA
+    # =====================================================
+
+    if quantity < 0:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Quantity cannot be negative"
         )
 
-    # Validate prices
-    if product_data.purchase_price < 0:
+    if purchase_price < 0:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Purchase price cannot be negative"
         )
 
-    if product_data.sale_price < 0:
+    if retail_price < 0:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Retail price cannot be negative"
+        )
+
+    if discount < 0 or discount > 100:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Discount must be between 0 and 100"
+        )
+
+    if sale_price < 0:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Sale price cannot be negative"
         )
 
-    return product_service.create_product(
+    # =====================================================
+    # CREATE PRODUCT SCHEMA
+    # =====================================================
+
+    product_data = ProductCreate(
+        name=name,
+        category=category,
+        description=description,
+        quantity=quantity,
+        purchase_price=purchase_price,
+        retail_price=retail_price,
+        discount=discount,
+        sale_price=sale_price,
+        supplier_id=supplier_id,
+    )
+
+    # =====================================================
+    # CREATE PRODUCT
+    # =====================================================
+
+    product = product_service.create_product(
         db,
         product_data
     )
 
+    # =====================================================
+    # STORE PRODUCT IMAGE
+    # =====================================================
 
-# ==========================================
+    if image:
+
+        # -------------------------------------------------
+        # Validate MIME type
+        # -------------------------------------------------
+
+        if image.content_type not in (
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ):
+
+            product_service.delete_product(
+                db,
+                product
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Only JPEG, PNG and WebP "
+                    "images are allowed"
+                )
+            )
+
+        # -------------------------------------------------
+        # Read uploaded image
+        # -------------------------------------------------
+
+        image_data = await image.read()
+
+        try:
+
+            # -------------------------------------------------
+            # Backend automatically:
+            #
+            # 1. Stores original image
+            # 2. Generates thumbnail
+            # 3. Stores thumbnail
+            #
+            # -------------------------------------------------
+
+            product_image_service.save_product_image(
+                db=db,
+                product_id=product.id,
+                image_data=image_data,
+                mime_type=image.content_type,
+            )
+
+        except ValueError as e:
+
+            # -------------------------------------------------
+            # Remove product if image processing fails
+            # -------------------------------------------------
+
+            product_service.delete_product(
+                db,
+                product
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+
+    # =====================================================
+    # GET THUMBNAIL URL
+    # =====================================================
+
+    thumbnail_url = (
+        product_image_service.get_thumbnail_url(
+            db,
+            product.id
+        )
+    )
+
+    # =====================================================
+    # RETURN PRODUCT
+    # =====================================================
+
+    return {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "category": product.category,
+        "quantity": product.quantity,
+        "purchase_price": product.purchase_price,
+        "retail_price": product.retail_price,
+        "discount": product.discount,
+        "sale_price": product.sale_price,
+        "supplier_id": product.supplier_id,
+        "thumbnail_url": thumbnail_url,
+    }
+
+
+# =========================================================
 # GET ALL PRODUCTS
-# ==========================================
+# =========================================================
 
 @router.get(
     "",
     response_model=list[ProductResponse]
 )
 def get_products(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
 
     products = product_service.get_products(db)
@@ -98,23 +279,28 @@ def get_products(
             )
         )
 
-        response.append({
-            "id": product.id,
-            "name": product.name,
-            "description": product.description,
-            "quantity": product.quantity,
-            "purchase_price": product.purchase_price,
-            "sale_price": product.sale_price,
-            "supplier_id": product.supplier_id,
-            "thumbnail_url": thumbnail_url
-        })
+        response.append(
+            {
+                "id": product.id,
+                "name": product.name,
+                "description": product.description,
+                "category": product.category,
+                "quantity": product.quantity,
+                "purchase_price": product.purchase_price,
+                "retail_price": product.retail_price,
+                "discount": product.discount,
+                "sale_price": product.sale_price,
+                "supplier_id": product.supplier_id,
+                "thumbnail_url": thumbnail_url,
+            }
+        )
 
     return response
 
 
-# ==========================================
+# =========================================================
 # GET ONE PRODUCT
-# ==========================================
+# =========================================================
 
 @router.get(
     "/{product_id}",
@@ -122,7 +308,7 @@ def get_products(
 )
 def get_product(
     product_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
 
     product = product_service.get_product(
@@ -131,6 +317,7 @@ def get_product(
     )
 
     if not product:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
@@ -147,45 +334,57 @@ def get_product(
         "id": product.id,
         "name": product.name,
         "description": product.description,
+        "category": product.category,
         "quantity": product.quantity,
         "purchase_price": product.purchase_price,
+        "retail_price": product.retail_price,
+        "discount": product.discount,
         "sale_price": product.sale_price,
         "supplier_id": product.supplier_id,
-        "thumbnail_url": thumbnail_url
+        "thumbnail_url": thumbnail_url,
     }
 
-def get_product(
-    product_id: int,
-    db: Session = Depends(get_db)
-):
 
-    product = product_service.get_product(
-        db,
-        product_id
-    )
-
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found"
-        )
-
-    return product
-
-
-# ==========================================
+# =========================================================
 # UPDATE PRODUCT
-# ==========================================
+# =========================================================
 
 @router.put(
     "/{product_id}",
     response_model=ProductResponse
 )
-def update_product(
+async def update_product(
+
     product_id: int,
-    product_data: ProductUpdate,
-    db: Session = Depends(get_db)
+
+    name: str | None = Form(None),
+
+    category: str | None = Form(None),
+
+    description: str | None = Form(None),
+
+    quantity: int | None = Form(None),
+
+    purchase_price: Decimal | None = Form(None),
+
+    retail_price: Decimal | None = Form(None),
+
+    discount: Decimal | None = Form(None),
+
+    sale_price: Decimal | None = Form(None),
+
+    supplier_id: int | None = Form(None),
+
+    image: UploadFile | None = File(None),
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_admin),
 ):
+
+    # =====================================================
+    # GET EXISTING PRODUCT
+    # =====================================================
 
     product = product_service.get_product(
         db,
@@ -193,70 +392,186 @@ def update_product(
     )
 
     if not product:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
         )
 
-    # Validate supplier
-    if (
-        product_data.supplier_id is not None
-    ):
+    # =====================================================
+    # VALIDATE SUPPLIER
+    # =====================================================
+
+    if supplier_id is not None:
 
         supplier = supplier_service.get_supplier(
             db,
-            product_data.supplier_id
+            supplier_id
         )
 
         if not supplier:
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Supplier not found"
             )
 
-    # Validate quantity
-    if (
-        product_data.quantity is not None
-        and product_data.quantity < 0
-    ):
+    # =====================================================
+    # VALIDATE PRODUCT FIELDS
+    # =====================================================
+
+    if quantity is not None and quantity < 0:
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Quantity cannot be negative"
         )
 
-    # Validate purchase price
-    if (
-        product_data.purchase_price is not None
-        and product_data.purchase_price < 0
-    ):
+    if purchase_price is not None and purchase_price < 0:
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Purchase price cannot be negative"
         )
 
-    # Validate sale price
+    if retail_price is not None and retail_price < 0:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Retail price cannot be negative"
+        )
+
     if (
-        product_data.sale_price is not None
-        and product_data.sale_price < 0
+        discount is not None
+        and (discount < 0 or discount > 100)
     ):
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Discount must be between 0 and 100"
+        )
+
+    if sale_price is not None and sale_price < 0:
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Sale price cannot be negative"
         )
 
-    return product_service.update_product(
+    # =====================================================
+    # CREATE UPDATE SCHEMA
+    # =====================================================
+
+    product_data = ProductUpdate(
+        name=name,
+        category=category,
+        description=description,
+        quantity=quantity,
+        purchase_price=purchase_price,
+        retail_price=retail_price,
+        discount=discount,
+        sale_price=sale_price,
+        supplier_id=supplier_id,
+    )
+
+    # =====================================================
+    # UPDATE PRODUCT
+    # =====================================================
+
+    product = product_service.update_product(
         db,
         product,
         product_data
     )
 
+    # =====================================================
+    # REPLACE PRODUCT IMAGE
+    # =====================================================
 
-# ==========================================
+    if image:
+
+        # -------------------------------------------------
+        # Validate MIME type
+        # -------------------------------------------------
+
+        if image.content_type not in (
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ):
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Only JPEG, PNG and WebP "
+                    "images are allowed"
+                )
+            )
+
+        # -------------------------------------------------
+        # Read uploaded image
+        # -------------------------------------------------
+
+        image_data = await image.read()
+
+        try:
+
+            # -------------------------------------------------
+            # Backend automatically:
+            #
+            # 1. Replaces original image
+            # 2. Generates new thumbnail
+            # 3. Replaces old thumbnail
+            #
+            # -------------------------------------------------
+
+            product_image_service.save_product_image(
+                db=db,
+                product_id=product.id,
+                image_data=image_data,
+                mime_type=image.content_type,
+            )
+
+        except ValueError as e:
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+
+    # =====================================================
+    # GET UPDATED THUMBNAIL URL
+    # =====================================================
+
+    thumbnail_url = (
+        product_image_service.get_thumbnail_url(
+            db,
+            product.id
+        )
+    )
+
+    # =====================================================
+    # RETURN UPDATED PRODUCT
+    # =====================================================
+
+    return {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "category": product.category,
+        "quantity": product.quantity,
+        "purchase_price": product.purchase_price,
+        "retail_price": product.retail_price,
+        "discount": product.discount,
+        "sale_price": product.sale_price,
+        "supplier_id": product.supplier_id,
+        "thumbnail_url": thumbnail_url,
+    }
+
+
+# =========================================================
 # DELETE PRODUCT
-# ==========================================
+# =========================================================
 
 @router.delete(
     "/{product_id}",
@@ -264,7 +579,8 @@ def update_product(
 )
 def delete_product(
     product_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
 
     product = product_service.get_product(
@@ -273,6 +589,7 @@ def delete_product(
     )
 
     if not product:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
@@ -286,45 +603,77 @@ def delete_product(
     return None
 
 
-# ==========================================
-# Upload PRODUCT Image
-# ==========================================
+# =========================================================
+# UPLOAD / REPLACE PRODUCT IMAGE
+# =========================================================
 
 @router.post(
     "/{product_id}/images",
     status_code=status.HTTP_201_CREATED
 )
-def upload_product_image(
+async def upload_product_image(
+
     product_id: int,
-    image_type: str,
+
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(require_admin),
 ):
 
-    # Check product exists
+    # =====================================================
+    # CHECK PRODUCT
+    # =====================================================
+
     product = product_service.get_product(
         db,
         product_id
     )
 
     if not product:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found"
         )
 
-    # Read image
-    image_data = file.file.read()
+    # =====================================================
+    # VALIDATE MIME TYPE
+    # =====================================================
+
+    if file.content_type not in (
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+    ):
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Only JPEG, PNG and WebP "
+                "images are allowed"
+            )
+        )
+
+    # =====================================================
+    # READ IMAGE
+    # =====================================================
+
+    image_data = await file.read()
+
+    # =====================================================
+    # SAVE ORIGINAL + GENERATE THUMBNAIL
+    # =====================================================
 
     try:
 
-        product_image = (
+        full_image, thumbnail_image = (
             product_image_service.save_product_image(
                 db=db,
                 product_id=product_id,
                 image_data=image_data,
                 mime_type=file.content_type,
-                image_type=image_type
             )
         )
 
@@ -335,26 +684,53 @@ def upload_product_image(
             detail=str(e)
         )
 
+    # =====================================================
+    # RETURN IMAGE INFORMATION
+    # =====================================================
+
     return {
         "message": "Product image uploaded successfully",
-        "image_id": product_image.id,
+
         "product_id": product_id,
-        "image_type": product_image.image_type,
-        "mime_type": product_image.mime_type,
-        "file_size": product_image.file_size
+
+        "full_image_url": (
+            f"/products/{product_id}/images/"
+            f"{full_image.id}"
+        ),
+
+        "thumbnail_url": (
+            f"/products/{product_id}/images/"
+            f"{thumbnail_image.id}"
+        ),
+
+        "full_image_id": full_image.id,
+
+        "thumbnail_image_id": thumbnail_image.id,
+
+        "full_image_size": full_image.file_size,
+
+        "thumbnail_image_size": (
+            thumbnail_image.file_size
+        ),
+
+        "mime_type": full_image.mime_type,
     }
 
-# ==========================================
-# Get PRODUCT Image
-# ==========================================
+
+# =========================================================
+# GET PRODUCT IMAGE
+# =========================================================
 
 @router.get(
     "/{product_id}/images/{image_id}"
 )
 def get_product_image(
+
     product_id: int,
+
     image_id: int,
-    db: Session = Depends(get_db)
+
+    db: Session = Depends(get_db),
 ):
 
     image = product_image_service.get_product_image(
@@ -364,6 +740,7 @@ def get_product_image(
     )
 
     if not image:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product image not found"
