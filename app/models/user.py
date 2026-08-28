@@ -1,7 +1,12 @@
+import enum
 from sqlalchemy import String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+class UserRole(str, enum.Enum):
+    ADMIN = "ADMIN"
+    SALES_MANAGER = "SALES_MANAGER"
 
 class User(Base):
 
@@ -29,7 +34,13 @@ class User(Base):
         nullable=False
     )
 
-    is_active: Mapped[bool] =mapped_column(
+    role: Mapped[str] = mapped_column(
+        String(50),
+        default=UserRole.SALES_MANAGER.value,
+        nullable=False
+    )
+
+    is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
         nullable=False

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Numeric
+from sqlalchemy import DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -25,6 +25,12 @@ class Invoice(Base):
 
     total_amount: Mapped[float] = mapped_column(
         Numeric(12, 2),
+        nullable=False
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="unpaid",
         nullable=False
     )
 

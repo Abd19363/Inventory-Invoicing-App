@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
-from app.models.user import User
-from app.schemas.auth import RegisterRequest, LoginRequest, RefreshRequest, TokenResponse
+from app.models.user import User, UserRole
+from app.schemas.auth import RegisterRequest, LoginRequest, RefreshRequest, TokenResponse, UserResponse
 from app.core.security import (hash_password,
     verify_password, create_access_token, create_refresh_token
 )
+from app.core.dependencies import get_current_user
 
 from app.models.refresh_token import RefreshToken
 
@@ -47,11 +49,18 @@ def register(
         request.password
     )
 
+    # Validate role
+    allowed_roles = [UserRole.ADMIN.value, UserRole.SALES_MANAGER.value]
+    role_value = request.role.upper() if request.role else UserRole.SALES_MANAGER.value
+    if role_value not in allowed_roles:
+        role_value = UserRole.SALES_MANAGER.value
+
     # Create user
     new_user = User(
         username=request.email,
         email=request.email,
         password_hash=hashed_password,
+        role=role_value,
         is_active=True
     )
 
@@ -62,69 +71,115 @@ def register(
     return {
         "message": "User registered successfully",
         "user_id": new_user.id,
-        "email": new_user.email
+        "email": new_user.email,
+        "role": new_user.role
     }
 # =====================
-#        Login 
+#        LOGIN
 # =====================
 
 @router.post(
     "/login",
     response_model=TokenResponse
 )
-
 def login(
     request: LoginRequest,
-    db: Session=Depends(get_db)
+    db: Session = Depends(get_db)
 ):
-    # find user by email
-    user=(
+
+    # ==========================================
+    # CLEAN EMAIL
+    # ==========================================
+
+    email = request.email.strip().lower()
+
+
+    # ==========================================
+    # FIND USER
+    # ==========================================
+
+    user = (
         db.query(User)
-        .filter(User.email == request.email)
+        .filter(
+            User.email == email
+        )
         .first()
     )
-    #user not exist
+
+
+    # ==========================================
+    # USER NOT FOUND
+    # ==========================================
 
     if not user:
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
-    # user is active or not
-    
+
+
+    # ==========================================
+    # CHECK ACTIVE STATUS
+    # ==========================================
+
     if not user.is_active:
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
 
-     #verify password
 
-    if not verify_password(
+    # ==========================================
+    # VERIFY PASSWORD
+    # ==========================================
+
+    password_valid = verify_password(
         request.password,
         user.password_hash
-    ):
+    )
+
+
+    if not password_valid:
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
 
-    # create access token
-    access_token= create_access_token({
-        "sub": str(user.id)
+
+    # ==========================================
+    # CREATE ACCESS TOKEN
+    # ==========================================
+
+    access_token = create_access_token({
+        "sub": str(user.id),
+        "role": user.role
     })
 
 
-    # Create refresh token
+    # ==========================================
+    # CREATE REFRESH TOKEN
+    # ==========================================
+
     refresh_token_value = create_refresh_token()
 
-    # Refresh token expiration
+
+    # ==========================================
+    # REFRESH TOKEN EXPIRATION
+    # ==========================================
+
     refresh_token_expires = (
         datetime.now(timezone.utc)
         + timedelta(days=7)
     )
 
-    # Store refresh token in database
+
+    # ==========================================
+    # STORE REFRESH TOKEN
+    # ==========================================
+
     refresh_token = RefreshToken(
         token=refresh_token_value,
         user_id=user.id,
@@ -132,16 +187,23 @@ def login(
         revoked=False
     )
 
+
     db.add(refresh_token)
     db.commit()
 
-    # Return tokens
+
+    # ==========================================
+    # RETURN TOKENS
+    # ==========================================
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token_value,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user_id": user.id,
+        "email": user.email,
+        "role": user.role
     }
-
 # =====================
 #       Refresh 
 # =====================
@@ -175,7 +237,7 @@ def refresh_access_token(
             detail="Refresh token has been revoked"
         )
 
-    if refresh_token.expires_at < datetime.now(timezone.utc):
+    if refresh_token.expires_at < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token has expired"
@@ -190,14 +252,31 @@ def refresh_access_token(
         )
 
     access_token = create_access_token({
-        "sub": str(user.id)
+        "sub": str(user.id),
+        "role": user.role
     })
 
     return {
         "access_token": access_token,
         "refresh_token": request.refresh_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user_id": user.id,
+        "email": user.email,
+        "role": user.role
     }
+
+# =====================
+#        GET ME
+# =====================
+
+@router.get(
+    "/me",
+    response_model=UserResponse
+)
+def get_me(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
 
 # =====================
 #        Logout

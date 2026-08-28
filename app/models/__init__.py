@@ -1,4 +1,4 @@
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.refresh_token import RefreshToken
 from app.models.supplier import Supplier
 from app.models.supplier_image import SupplierImage

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 class SupplierCreate(BaseModel):
@@ -25,5 +25,6 @@ class SupplierResponse(BaseModel):
     phone: str | None = None
     address: str | None = None
 
-    class Config:
+    model_config = ConfigDict(
         from_attributes = True
+    )
