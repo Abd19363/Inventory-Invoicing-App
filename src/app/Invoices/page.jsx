@@ -2,15 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getInvoices, deleteInvoice } from "@/Services/invoicesService";
+import { getInvoices, deleteInvoice, viewInvoicePdf } from "@/Services/invoicesService";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import useAuth from "@/hooks/useAuth";
+import Sidebar from "@/app/components/Sidebar";
+import useSidebarState from "@/hooks/useSidebarState";
 
 export default function InvoiceDashboard() {
-    useAuth();
+    const { isAdmin, isSalesManager, role } = useAuth();
 
     const router = useRouter();
     const queryClient = useQueryClient();
+
+    const [sidebarCollapsed, setSidebarCollapsed] = useSidebarState();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // ==========================================
     // SEARCH STATE
@@ -277,7 +283,7 @@ export default function InvoiceDashboard() {
                 );
             }
 
-            alert(
+            toast.success(
                 "Invoice deleted successfully!"
             );
 
@@ -288,7 +294,7 @@ export default function InvoiceDashboard() {
 
         } catch (error) {
 
-            alert(error.message);
+            toast.error(error.message);
 
         }
     }
@@ -298,28 +304,71 @@ export default function InvoiceDashboard() {
     // ==========================================
 
     return (
+        <div className="min-h-screen bg-[#051424] text-[#d4e4fa] flex">
+            <Sidebar
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+            />
 
-        <div className="
-            min-h-screen
-            w-full
-            bg-zinc-950
-            text-zinc-100
-            flex
-            flex-col
-            items-center
-            p-4
-            sm:p-6
-            lg:p-8
-            antialiased
-            selection:bg-emerald-500/30
-            selection:text-emerald-200
-        ">
+            <div className={`flex-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${sidebarCollapsed ? "md:ml-0" : "md:ml-[260px]"} min-h-screen flex flex-col`}>
+                {/* RESPONSIVE TOP BAR */}
+                <header className="sticky top-0 bg-[#051424]/90 backdrop-blur-md border-b border-[#3c4a42] px-4 md:px-8 py-3.5 flex items-center justify-between z-30">
+                    <div className="flex items-center gap-3">
+                        {sidebarCollapsed && (
+                            <button
+                                onClick={() => setSidebarCollapsed(false)}
+                                className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#0d1c2d] border border-[#3c4a42] text-[#bbcabf] hover:text-[#4edea3] hover:border-[#10b981]/50 text-xs font-semibold transition-all cursor-pointer shadow-md"
+                                title="Expand Sidebar Slider"
+                            >
+                                <svg className="w-4 h-4 text-[#4edea3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                </svg>
+                                <span>Sidebar Slider</span>
+                            </button>
+                        )}
+                        <div className="flex items-center gap-3 md:hidden">
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="p-2 text-[#bbcabf] hover:text-white text-xl"
+                            >
+                                ☰
+                            </button>
+                            <span className="text-lg font-bold text-[#4edea3]">InvPro</span>
+                        </div>
+                    </div>
 
-            {/* ==================================
+                    <div className="flex items-center gap-3">
+                        {/* ROLE BADGE */}
+                        {role && (
+                            <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                                isAdmin
+                                    ? "bg-purple-500/10 border-purple-500/40 text-purple-300"
+                                    : "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
+                            }`}>
+                                {isAdmin ? "🛡️ Admin" : "👤 Sales Manager"}
+                            </span>
+                        )}
+                        {(isAdmin || isSalesManager) && (
+                        <button
+                            onClick={() => router.push("/Invoices/Create")}
+                            className="bg-[#10b981] hover:bg-[#059669] text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-[#10b981]/20 cursor-pointer"
+                        >
+                            + Create Invoice
+                        </button>
+                        )}
+                    </div>
+                </header>
+
+                <main className="p-4 sm:p-6 lg:p-8 flex-1 max-w-6xl w-full mx-auto">
+                    <div className="mx-auto" />
+
+                    {/* ==================================
                 HEADER
             ================================== */}
 
-            <div className="
+                    <div className="
                 w-full
                 max-w-6xl
                 mb-8
@@ -332,7 +381,7 @@ export default function InvoiceDashboard() {
                 shadow-xl
             ">
 
-                <div className="
+                        <div className="
                     flex
                     flex-col
                     sm:flex-row
@@ -341,9 +390,9 @@ export default function InvoiceDashboard() {
                     gap-5
                 ">
 
-                    <div className="text-center sm:text-left">
+                            <div className="text-center sm:text-left">
 
-                        <p className="
+                                <p className="
                             text-xs
                             sm:text-sm
                             font-semibold
@@ -351,10 +400,10 @@ export default function InvoiceDashboard() {
                             text-emerald-400
                             mb-2
                         ">
-                            SALES MANAGEMENT
-                        </p>
+                                    SALES MANAGEMENT
+                                </p>
 
-                        <h1 className="
+                                <h1 className="
                             text-2xl
                             sm:text-3xl
                             lg:text-4xl
@@ -362,22 +411,22 @@ export default function InvoiceDashboard() {
                             tracking-tight
                             text-white
                         ">
-                            Invoice Dashboard
-                        </h1>
+                                    Invoice Dashboard
+                                </h1>
 
-                        <p className="
+                                <p className="
                             mt-2
                             text-sm
                             sm:text-base
                             text-zinc-500
                         ">
-                            Manage invoices and keep track of your sales.
-                        </p>
+                                    Manage invoices and keep track of your sales.
+                                </p>
 
-                    </div>
+                            </div>
 
 
-                    <div className="
+                            <div className="
                         min-w-[150px]
                         bg-zinc-950
                         border
@@ -389,47 +438,47 @@ export default function InvoiceDashboard() {
                         shadow-inner
                     ">
 
-                        <p className="
+                                <p className="
                             text-xs
                             uppercase
                             tracking-wider
                             font-semibold
                             text-zinc-500
                         ">
-                            Total Invoices
-                        </p>
+                                    Total Invoices
+                                </p>
 
-                        <p className="
+                                <p className="
                             text-3xl
                             font-extrabold
                             text-emerald-400
                             mt-1
                         ">
-                            {invoices.length}
-                        </p>
+                                    {invoices.length}
+                                </p>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
-                </div>
 
-            </div>
-
-
-            {/* ==================================
+                    {/* ==================================
                 MAIN CONTENT
             ================================== */}
 
-            <div className="
+                    <div className="
                 w-full
                 max-w-6xl
             ">
 
 
-                {/* ==================================
+                        {/* ==================================
                     LIST HEADER
                 ================================== */}
 
-                <div className="
+                        <div className="
                     flex
                     flex-col
                     sm:flex-row
@@ -440,34 +489,35 @@ export default function InvoiceDashboard() {
                     mb-5
                 ">
 
-                    <div>
+                            <div>
 
-                        <h2 className="
+                                <h2 className="
                             text-xl
                             sm:text-2xl
                             font-bold
                             text-white
                         ">
-                            Invoice List
-                        </h2>
+                                    Invoice List
+                                </h2>
 
-                        <p className="
+                                <p className="
                             text-sm
                             text-zinc-500
                             mt-1
                         ">
-                            View, search and manage your invoices.
-                        </p>
+                                    View, search and manage your invoices.
+                                </p>
 
-                    </div>
+                            </div>
 
 
-                    <button
-                        type="button"
-                        onClick={() =>
-                            router.push("/Invoices/Create")
-                        }
-                        className="
+                            {(isAdmin || isSalesManager) && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.push("/Invoices/Create")
+                                }
+                                className="
                             w-full
                             sm:w-auto
                             bg-emerald-600
@@ -490,28 +540,29 @@ export default function InvoiceDashboard() {
                             gap-2
                             cursor-pointer
                         "
-                    >
+                            >
 
-                        <span className="
+                                <span className="
                             text-lg
                             font-bold
                             leading-none
                         ">
-                            +
-                        </span>
+                                    +
+                                </span>
 
-                        Generate Invoice
+                                Generate Invoice
 
-                    </button>
+                            </button>
+                            )}
 
-                </div>
+                        </div>
 
 
-                {/* ==================================
+                        {/* ==================================
                     SEARCH BAR
                 ================================== */}
 
-                <div className="
+                        <div className="
                     bg-zinc-900
                     border
                     border-zinc-800
@@ -521,16 +572,16 @@ export default function InvoiceDashboard() {
                     shadow-xl
                 ">
 
-                    <div className="relative">
+                            <div className="relative">
 
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) =>
-                                setSearchTerm(e.target.value)
-                            }
-                            placeholder="Search by customer name, invoice ID or date..."
-                            className="
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) =>
+                                        setSearchTerm(e.target.value)
+                                    }
+                                    placeholder="Search by customer name, invoice ID or date..."
+                                    className="
                                 w-full
                                 px-4
                                 py-3
@@ -546,76 +597,76 @@ export default function InvoiceDashboard() {
                                 focus:ring-emerald-500/20
                                 transition-all
                             "
-                        />
+                                />
 
-                    </div>
+                            </div>
 
 
-                    <div className="
+                            <div className="
                         flex
                         justify-between
                         items-center
                         mt-3
                     ">
 
-                        <p className="
+                                <p className="
                             text-sm
                             text-zinc-500
                         ">
 
-                            Showing{" "}
+                                    Showing{" "}
 
-                            <span className="
+                                    <span className="
                                 text-emerald-400
                                 font-semibold
                             ">
-                                {filteredInvoices.length}
-                            </span>
+                                        {filteredInvoices.length}
+                                    </span>
 
-                            {" "}of{" "}
+                                    {" "}of{" "}
 
-                            <span className="
+                                    <span className="
                                 text-zinc-300
                                 font-semibold
                             ">
-                                {invoices.length}
-                            </span>
+                                        {invoices.length}
+                                    </span>
 
-                            {" "}invoices
+                                    {" "}invoices
 
-                        </p>
+                                </p>
 
 
-                        {searchTerm && (
+                                {searchTerm && (
 
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setSearchTerm("");
-                                }}
-                                className="
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSearchTerm("");
+                                        }}
+                                        className="
                                     text-sm
                                     font-medium
                                     text-zinc-500
                                     hover:text-emerald-400
                                     transition-colors
                                 "
-                            >
-                                Clear Search
-                            </button>
+                                    >
+                                        Clear Search
+                                    </button>
 
-                        )}
+                                )}
 
-                    </div>
+                            </div>
 
-                </div>
+                        </div>
 
 
-                {/* ==================================
+                        {/* ==================================
                     INVOICE TABLE
                 ================================== */}
 
-                <div className="
+                        <div className="
                     overflow-x-auto
                     rounded-2xl
                     border
@@ -624,18 +675,18 @@ export default function InvoiceDashboard() {
                     bg-zinc-900
                 ">
 
-                    <table className="
+                            <table className="
                         w-full
                         border-collapse
                         text-left
                         text-sm
                     ">
 
-                        {/* TABLE HEADER */}
+                                {/* TABLE HEADER */}
 
-                        <thead>
+                                <thead>
 
-                            <tr className="
+                                    <tr className="
                                 bg-zinc-950
                                 text-zinc-400
                                 font-semibold
@@ -646,68 +697,72 @@ export default function InvoiceDashboard() {
                                 border-zinc-800
                             ">
 
-                                <th className="
+                                        <th className="
                                     p-4
                                     text-center
                                     whitespace-nowrap
                                 ">
-                                    Invoice ID
-                                </th>
+                                            Invoice ID
+                                        </th>
 
-                                <th className="p-4">
-                                    Customer
-                                </th>
+                                        <th className="p-4">
+                                            Customer
+                                        </th>
 
-                                <th className="p-4">
-                                    Date
-                                </th>
+                                        <th className="p-4">
+                                            Date
+                                        </th>
 
-                                <th className="
+                                        <th className="p-4 text-center">
+                                            Status
+                                        </th>
+
+                                        <th className="
                                     p-4
                                     text-right
                                 ">
-                                    Total
-                                </th>
+                                            Total
+                                        </th>
 
-                                <th className="
+                                        <th className="
                                     p-4
                                     text-center
                                 ">
-                                    Actions
-                                </th>
+                                            Actions
+                                        </th>
 
-                            </tr>
+                                    </tr>
 
-                        </thead>
+                                </thead>
 
 
-                        {/* TABLE BODY */}
+                                {/* TABLE BODY */}
 
-                        <tbody className="
+                                <tbody className="
                             divide-y
                             divide-zinc-800
                             bg-zinc-900
                         ">
 
-                            {filteredInvoices.length === 0 ? (
+                                    {filteredInvoices.length === 0 ? (
 
-                                <tr>
+                                        <tr>
 
-                                    <td
-                                        colSpan={5}
-                                        className="
+                                            <td
+                                                colSpan={6}
+                                                className="
                                             p-12
                                             text-center
                                         "
-                                    >
+                                            >
 
-                                        <div className="
+                                                <div className="
                                             flex
                                             flex-col
                                             items-center
                                         ">
 
-                                            <div className="
+                                                    <div className="
                                                 w-14
                                                 h-14
                                                 rounded-full
@@ -720,180 +775,44 @@ export default function InvoiceDashboard() {
                                                 mb-4
                                             ">
 
-                                                <span className="
+                                                        <span className="
                                                     text-2xl
                                                     text-zinc-500
                                                 ">
-                                                    📄
-                                                </span>
+                                                            📄
+                                                        </span>
 
-                                            </div>
+                                                    </div>
 
-                                            <p className="
+                                                    <p className="
                                                 text-zinc-400
                                                 font-medium
                                             ">
-                                                {debouncedSearch
-                                                    ? "No invoices match your search."
-                                                    : "No invoices found."
-                                                }
-                                            </p>
+                                                        {debouncedSearch
+                                                            ? "No invoices match your search."
+                                                            : "No invoices found."
+                                                        }
+                                                    </p>
 
-                                            {!debouncedSearch && (
+                                                    {!debouncedSearch && (
 
-                                                <button
-                                                    onClick={() =>
-                                                        router.push(
-                                                            "/Invoices/Create"
-                                                        )
-                                                    }
-                                                    className="
+                                                        <button
+                                                            onClick={() =>
+                                                                router.push(
+                                                                    "/Invoices/Create"
+                                                                )
+                                                            }
+                                                            className="
                                                         mt-4
                                                         text-emerald-400
                                                         hover:text-emerald-300
                                                         font-semibold
                                                     "
-                                                >
-                                                    Create your first invoice →
-                                                </button>
+                                                        >
+                                                            Create your first invoice →
+                                                        </button>
 
-                                            )}
-
-                                        </div>
-
-                                    </td>
-
-                                </tr>
-
-                            ) : (
-
-                                filteredInvoices.map(
-                                    (invoice) => (
-
-                                        <tr
-                                            key={invoice.id}
-                                            className="
-                                                hover:bg-zinc-800/60
-                                                transition-colors
-                                                duration-200
-                                            "
-                                        >
-
-                                            {/* INVOICE ID */}
-
-                                            <td className="
-                                                p-4
-                                                font-mono
-                                                text-zinc-400
-                                                text-center
-                                            ">
-                                                #{invoice.id}
-                                            </td>
-
-
-                                            {/* CUSTOMER */}
-
-                                            <td className="
-                                                p-4
-                                                font-medium
-                                                text-zinc-100
-                                            ">
-                                                {invoice.customerName || "—"}
-                                            </td>
-
-
-                                            {/* DATE */}
-
-                                            <td className="
-                                                p-4
-                                                text-zinc-500
-                                            ">
-                                                {invoice.date || "—"}
-                                            </td>
-
-
-                                            {/* TOTAL */}
-
-                                            <td className="
-                                                p-4
-                                                text-right
-                                                font-semibold
-                                                text-emerald-400
-                                            ">
-                                                Rs.{" "}
-                                                {Number(
-                                                    invoice.total || 0
-                                                ).toLocaleString()}
-                                            </td>
-
-
-                                            {/* ACTIONS */}
-
-                                            <td className="p-4">
-
-                                                <div className="
-                                                    flex
-                                                    items-center
-                                                    justify-center
-                                                    gap-2
-                                                ">
-
-                                                    {/* VIEW */}
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            router.push(
-                                                                `/Invoices/View/${invoice.id}`
-                                                            )
-                                                        }
-                                                        className="
-                                                            bg-blue-600
-                                                            hover:bg-blue-500
-                                                            active:bg-blue-700
-                                                            text-white
-                                                            font-semibold
-                                                            text-xs
-                                                            rounded-lg
-                                                            px-4
-                                                            py-2
-                                                            transition-all
-                                                            duration-200
-                                                            shadow-sm
-                                                            hover:-translate-y-0.5
-                                                        "
-                                                    >
-                                                        View
-                                                    </button>
-
-
-                                                    {/* DELETE */}
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handledelete(
-                                                                invoice.id
-                                                            )
-                                                        }
-                                                        className="
-                                                            bg-rose-600
-                                                            hover:bg-rose-500
-                                                            active:bg-rose-700
-                                                            text-white
-                                                            font-semibold
-                                                            text-xs
-                                                            rounded-lg
-                                                            px-4
-                                                            py-2
-                                                            transition-all
-                                                            duration-200
-                                                            shadow-sm
-                                                            hover:-translate-y-0.5
-                                                        "
-                                                    >
-                                                        Delete
-                                                    </button>
+                                                    )}
 
                                                 </div>
 
@@ -901,23 +820,256 @@ export default function InvoiceDashboard() {
 
                                         </tr>
 
-                                    )
-                                )
+                                    ) : (
 
-                            )}
+                                        filteredInvoices.map(
+                                            (invoice) => (
 
-                        </tbody>
+                                                <tr
+                                                    key={invoice.id}
+                                                    className="
+                                                hover:bg-zinc-800/60
+                                                transition-colors
+                                                duration-200
+                                            "
+                                                >
 
-                    </table>
 
-                </div>
+                                                    {/* INVOICE ID */}
+
+                                                    <td className="
+                                                p-4
+                                                font-mono
+                                                text-zinc-400
+                                                text-center
+                                            ">
+                                                        #{invoice.id}
+                                                    </td>
 
 
-                {/* ==================================
+                                                    {/* CUSTOMER */}
+
+                                                    <td className="
+                                                p-4
+                                                font-medium
+                                                text-zinc-100
+                                            ">
+                                                        {invoice.customerName || "—"}
+                                                    </td>
+
+
+                                                    {/* DATE */}
+
+                                                    <td className="
+                                                p-4
+                                                text-zinc-500
+                                            ">
+                                                        {invoice.date || "—"}
+                                                    </td>
+
+
+                                                    {/* STATUS BADGE */}
+
+                                                    <td className="p-4 text-center">
+                                                        {invoice.status === "paid" ? (
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                                ✓ Paid
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                                ● Unpaid
+                                                            </span>
+                                                        )}
+                                                    </td>
+
+
+                                                    {/* TOTAL */}
+
+                                                    <td className="
+                                                p-4
+                                                text-right
+                                                font-semibold
+                                                text-emerald-400
+                                            ">
+                                                        Rs.{" "}
+                                                        {Number(
+                                                            invoice.total || 0
+                                                        ).toLocaleString()}
+                                                    </td>
+
+
+                                                    {/* ACTIONS */}
+
+                                                    <td className="p-4">
+
+                                                        <div className="
+                                                    flex
+                                                    items-center
+                                                    justify-center
+                                                    gap-2
+                                                ">
+
+                                                            {/* VIEW */}
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    router.push(
+                                                                        `/Invoices/View/${invoice.id}`
+                                                                    )
+                                                                }
+                                                                className="
+                                                            bg-blue-600
+                                                            hover:bg-blue-500
+                                                            active:bg-blue-700
+                                                            text-white
+                                                            font-semibold
+                                                            text-xs
+                                                            rounded-lg
+                                                            px-3
+                                                            py-2
+                                                            transition-all
+                                                            duration-200
+                                                            shadow-sm
+                                                            hover:-translate-y-0.5
+                                                        "
+                                                            >
+                                                                View
+                                                            </button>
+
+
+                                                            {/* EDIT - ADMIN ONLY */}
+
+                                                            {isAdmin && (
+                                                            invoice.status !== "paid" ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        router.push(
+                                                                            `/Invoices/Edit/${invoice.id}`
+                                                                        )
+                                                                    }
+                                                                    className="
+                                                                bg-amber-600
+                                                                hover:bg-amber-500
+                                                                active:bg-amber-700
+                                                                text-white
+                                                                font-semibold
+                                                                text-xs
+                                                                rounded-lg
+                                                                px-3
+                                                                py-2
+                                                                transition-all
+                                                                duration-200
+                                                                shadow-sm
+                                                                hover:-translate-y-0.5
+                                                            "
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled
+                                                                    title="Paid invoices are read-only and cannot be edited"
+                                                                    className="
+                                                                bg-zinc-800
+                                                                text-zinc-500
+                                                                font-semibold
+                                                                text-xs
+                                                                rounded-lg
+                                                                px-3
+                                                                py-2
+                                                                cursor-not-allowed
+                                                                opacity-60
+                                                            "
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                            )
+                                                            )}
+
+
+                                                            {/* PDF STREAM */}
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    viewInvoicePdf(invoice.id)
+                                                                }
+                                                                className="
+                                                            bg-emerald-700
+                                                            hover:bg-emerald-600
+                                                            text-white
+                                                            font-semibold
+                                                            text-xs
+                                                            rounded-lg
+                                                            px-3
+                                                            py-2
+                                                            transition-all
+                                                            duration-200
+                                                            shadow-sm
+                                                            hover:-translate-y-0.5
+                                                            cursor-pointer
+                                                        "
+                                                            >
+                                                                PDF ↗
+                                                            </button>
+
+
+                                                            {/* DELETE - ADMIN ONLY */}
+
+                                                            {isAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handledelete(
+                                                                        invoice.id
+                                                                    )
+                                                                }
+                                                                className="
+                                                            bg-rose-600
+                                                            hover:bg-rose-500
+                                                            active:bg-rose-700
+                                                            text-white
+                                                            font-semibold
+                                                            text-xs
+                                                            rounded-lg
+                                                            px-3
+                                                            py-2
+                                                            transition-all
+                                                            duration-200
+                                                            shadow-sm
+                                                            hover:-translate-y-0.5
+                                                        "
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                            )}
+
+                                                        </div>
+
+                                                    </td>
+
+                                                </tr>
+
+                                            )
+                                        )
+
+                                    )}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+
+                        {/* ==================================
                     BOTTOM NAVIGATION
                 ================================== */}
 
-                <div className="
+                        <div className="
                     flex
                     flex-col
                     sm:flex-row
@@ -927,11 +1079,11 @@ export default function InvoiceDashboard() {
                     mt-8
                 ">
 
-                    <button
-                        onClick={() =>
-                            router.push("/Home")
-                        }
-                        className="
+                            <button
+                                onClick={() =>
+                                    router.push("/Home")
+                                }
+                                className="
                             w-full
                             sm:w-auto
                             bg-zinc-900
@@ -949,14 +1101,14 @@ export default function InvoiceDashboard() {
                             duration-200
                             hover:-translate-y-0.5
                         "
-                    >
-                        ← Go to Home
-                    </button>
+                            >
+                                ← Go to Home
+                            </button>
 
-                </div>
-
+                        </div>
+                    </div>
+                </main>
             </div>
-
         </div>
     );
 }

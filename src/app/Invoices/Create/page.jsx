@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 import {
     addItem,
@@ -17,10 +18,14 @@ import {
 } from "@/store/invoiceDraftSlice";
 
 import { saveInvoice } from "@/Services/invoicesService";
+
 import {
-    getItems,
-    updateItem
+    getItems
 } from "@/Services/inventoryService";
+
+import useAuth from "@/hooks/useAuth";
+import Sidebar from "@/app/components/Sidebar";
+import useSidebarState from "@/hooks/useSidebarState";
 
 
 // ==================================================
@@ -28,15 +33,8 @@ import {
 // ==================================================
 
 const invoiceSchema = z.object({
-
-    customerName: z
-        .string()
-        .min(1, "Customer name is required"),
-
-    date: z
-        .string()
-        .min(1, "Invoice date is required"),
-
+    customerName: z.string().min(1, "Customer name is required"),
+    date: z.string().min(1, "Invoice date is required")
 });
 
 
@@ -52,13 +50,16 @@ const INVOICE_LOG_KEY = "invoiceActivityLog";
 // ==================================================
 
 export default function InvoiceHome() {
+    useAuth();
+
+    const [sidebarCollapsed, setSidebarCollapsed] = useSidebarState();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const draft = useSelector(
         (state) => state.invoiceDraft
     );
 
     const dispatch = useDispatch();
-
     const router = useRouter();
 
 
@@ -70,11 +71,7 @@ export default function InvoiceHome() {
         register,
         formState: { errors }
     } = useForm({
-
-        resolver: zodResolver(
-            invoiceSchema
-        ),
-
+        resolver: zodResolver(invoiceSchema)
     });
 
 
@@ -82,37 +79,54 @@ export default function InvoiceHome() {
     // INVENTORY PRODUCTS
     // ==================================================
 
-    const [products, setProducts] =
-        useState([]);
+    const [products, setProducts] = useState([]);
 
 
     // ==================================================
     // SEARCH
     // ==================================================
 
-    const [productSearch, setProductSearch] =
-        useState("");
+    const [productSearch, setProductSearch] = useState("");
 
 
     // ==================================================
     // SELECTED PRODUCT
     // ==================================================
 
-    const [selectedProduct, setSelectedProduct] =
-        useState("");
+    const [selectedProduct, setSelectedProduct] = useState("");
 
 
     // ==================================================
     // INVOICE LOGS
     // ==================================================
 
-    const [invoiceLogs, setInvoiceLogs] =
-        useState([]);
+    const [invoiceLogs, setInvoiceLogs] = useState([]);
 
 
     console.log(
         "Invoice Draft State:",
         draft
+    );
+
+
+    // ==================================================
+    // GRAND TOTAL
+    // ==================================================
+
+    const grandtotal = draft.items.reduce(
+        (total, item) => {
+
+            const quantity =
+                Number(item.invoiceQuantity) || 0;
+
+            const salePrice =
+                Number(item.salePrice) || 0;
+
+            return total + (
+                quantity * salePrice
+            );
+        },
+        0
     );
 
 
@@ -131,12 +145,11 @@ export default function InvoiceHome() {
             !draft.customerName.trim()
         ) {
 
-            alert(
+            toast.error(
                 "Customer name is required."
             );
 
             return;
-
         }
 
 
@@ -146,12 +159,11 @@ export default function InvoiceHome() {
 
         if (!draft.date) {
 
-            alert(
+            toast.error(
                 "Invoice date is required."
             );
 
             return;
-
         }
 
 
@@ -164,12 +176,11 @@ export default function InvoiceHome() {
             draft.items.length === 0
         ) {
 
-            alert(
+            toast.error(
                 "Please add at least one product to the invoice."
             );
 
             return;
-
         }
 
 
@@ -179,64 +190,84 @@ export default function InvoiceHome() {
 
         for (const item of draft.items) {
 
-            if (
-                !item.invoiceQuantity ||
-                item.invoiceQuantity < 1
-            ) {
+            const invoiceQuantity =
+                Number(item.invoiceQuantity) || 0;
 
-                alert(
+            const availableStock =
+                Number(item.quantity) || 0;
+
+
+            if (invoiceQuantity < 1) {
+
+                toast.error(
                     `Please enter a valid quantity for ${item.name}.`
                 );
 
                 return;
-
             }
 
 
             if (
-                item.invoiceQuantity >
-                item.quantity
+                invoiceQuantity >
+                availableStock
             ) {
 
-                alert(
-                    `Only ${item.quantity} units of ${item.name} are available in stock.`
+                toast.error(
+                    `Only ${availableStock} units of ${item.name} are available in stock.`
                 );
 
                 return;
-
             }
-
         }
 
 
         // ----------------------------------------------
-        // SAVE
+        // SAVE TO BACKEND
         // ----------------------------------------------
 
         try {
 
-            const invoice = {
+            // IMPORTANT:
+            //
+            // saveInvoice() expects camelCase data.
+            //
+            // Do NOT send:
+            // customer_name
+            // customer_email
+            //
+            // Do NOT send:
+            // product_id
+            //
+            // The service converts the frontend structure
+            // into the FastAPI structure.
+            // ------------------------------------------
 
-                id: Date.now(),
+            const invoicePayload = {
 
                 customerName:
-                    draft.customerName,
+                    draft.customerName.trim(),
 
-                date:
-                    draft.date,
+                customerEmail:
+                    null,
 
                 items:
-                    draft.items,
+                    draft.items.map(
+                        (item) => ({
 
-                total:
-                    grandtotal
+                            id:
+                                Number(item.id),
 
+                            invoiceQuantity:
+                                Number(item.invoiceQuantity)
+
+                        })
+                    )
             };
 
 
             console.log(
-                "Invoice being saved:",
-                invoice
+                "Invoice payload before service:",
+                invoicePayload
             );
 
 
@@ -246,80 +277,131 @@ export default function InvoiceHome() {
             );
 
 
-            // ------------------------------------------
+            // ----------------------------------------------
             // SAVE INVOICE
+            // ----------------------------------------------
+
+            const savedInvoice =
+                await saveInvoice(
+                    invoicePayload
+                );
+
+
+            console.log(
+                "Invoice saved by backend:",
+                savedInvoice
+            );
+
+
+            // ----------------------------------------------
+            // CHECK BACKEND RESPONSE
+            // ----------------------------------------------
+
+            if (!savedInvoice) {
+
+                throw new Error(
+                    "Backend did not return the saved invoice."
+                );
+            }
+
+
+            // ----------------------------------------------
+            // CREATE ACTIVITY LOG
+            // ----------------------------------------------
+            //
+            // IMPORTANT:
+            // saveInvoice() already normalizes the backend
+            // response.
+            //
+            // Therefore use:
+            //
+            // savedInvoice.id
+            // savedInvoice.customerName
+            // savedInvoice.total
+            // savedInvoice.date
             // ------------------------------------------
 
-            await saveInvoice(invoice);
+            const invoiceForLog = {
+
+                id:
+                    savedInvoice.id,
+
+                customerName:
+                    savedInvoice.customerName ||
+                    draft.customerName,
+
+                total:
+                    Number(
+                        savedInvoice.total
+                    ) || grandtotal,
+
+                date:
+                    savedInvoice.date ||
+                    draft.date
+            };
 
 
-            // ------------------------------------------
+            console.log(
+                "Invoice for activity log:",
+                invoiceForLog
+            );
+
+
+            // ----------------------------------------------
             // ADD ACTIVITY LOG
-            // ------------------------------------------
+            // ----------------------------------------------
 
             addInvoiceLog(
-                invoice,
+                invoiceForLog,
                 "Added"
             );
 
 
-            // ------------------------------------------
-            // UPDATE INVENTORY STOCK
-            // ------------------------------------------
-
-            for (
-                const item of draft.items
-            ) {
-
-                const remainingQuantity =
-                    item.quantity -
-                    item.invoiceQuantity;
-
-
-                const updatedProduct = {
-
-                    ...item,
-
-                    quantity:
-                        remainingQuantity
-
-                };
+            // ----------------------------------------------
+            // IMPORTANT STOCK NOTE
+            // ----------------------------------------------
+            //
+            // The FastAPI backend already decreases stock
+            // while creating the invoice.
+            //
+            // Therefore we DO NOT call updateItem()
+            // here.
+            //
+            // Otherwise stock would be decreased twice.
+            // ----------------------------------------------
 
 
-                delete updatedProduct.invoiceQuantity;
-
-
-                await updateItem(
-                    item.id,
-                    updatedProduct
-                );
-
-            }
-
-
-            // ------------------------------------------
+            // ----------------------------------------------
             // SUCCESS
-            // ------------------------------------------
+            // ----------------------------------------------
 
-            alert(
+            toast.success(
                 "Invoice saved successfully!"
             );
 
 
             console.log(
-                "New Invoice is:",
-                invoice
+                "New Invoice:",
+                savedInvoice
             );
 
 
-            // ------------------------------------------
+            // ----------------------------------------------
             // CLEAR DRAFT
-            // ------------------------------------------
+            // ----------------------------------------------
 
             dispatch(
                 clearDraft()
             );
 
+
+            // ----------------------------------------------
+            // GO TO INVOICE LIST
+            // ----------------------------------------------
+
+            router.push(
+                "/Invoices"
+            );
 
         } catch (error) {
 
@@ -328,12 +410,11 @@ export default function InvoiceHome() {
                 error
             );
 
-            alert(
-                error.message
+            toast.error(
+                error?.message ||
+                "Failed to save invoice."
             );
-
         }
-
     }
 
 
@@ -359,17 +440,24 @@ export default function InvoiceHome() {
                 data || []
             );
 
-
         } catch (error) {
 
-            alert(
-                error.message
+            console.error(
+                "Error loading products:",
+                error
             );
 
+            toast.error(
+                error?.message ||
+                "Failed to load products."
+            );
         }
-
     }
 
+
+    // ==================================================
+    // LOAD PRODUCTS ON PAGE LOAD
+    // ==================================================
 
     useEffect(() => {
 
@@ -393,26 +481,19 @@ export default function InvoiceHome() {
 
 
                 if (!search) {
-
                     return false;
-
                 }
 
 
                 return (
-
                     product.name
                         ?.toLowerCase()
                         .includes(search)
-
                     ||
-
                     product.category
                         ?.toLowerCase()
                         .includes(search)
-
                 );
-
             }
         );
 
@@ -421,9 +502,7 @@ export default function InvoiceHome() {
     // SELECT PRODUCT
     // ==================================================
 
-    function handleSelectProduct(
-        product
-    ) {
+    function handleSelectProduct(product) {
 
         setSelectedProduct(
             product.id
@@ -433,7 +512,6 @@ export default function InvoiceHome() {
         setProductSearch(
             product.name
         );
-
     }
 
 
@@ -447,9 +525,7 @@ export default function InvoiceHome() {
             products.find(
                 (product) =>
                     product.id ===
-                    Number(
-                        selectedProduct
-                    )
+                    Number(selectedProduct)
             );
 
 
@@ -465,37 +541,65 @@ export default function InvoiceHome() {
         );
 
 
-        if (product) {
+        if (!product) {
 
-            const invoiceItem = {
-
-                ...product,
-
-                invoiceQuantity: 1
-
-            };
-
-
-            dispatch(
-                addItem(
-                    invoiceItem
-                )
-            );
-
-
-            setProductSearch("");
-
-            setSelectedProduct("");
-
-
-        } else {
-
-            alert(
+            toast.error(
                 "Please select a product first."
             );
 
+            return;
         }
 
+
+        // ----------------------------------------------
+        // PREVENT DUPLICATE PRODUCTS
+        // ----------------------------------------------
+
+        const alreadyExists =
+            draft.items.some(
+                (item) =>
+                    Number(item.id) ===
+                    Number(product.id)
+            );
+
+
+        if (alreadyExists) {
+
+            toast.error(
+                `${product.name} is already added to the invoice.`
+            );
+
+            return;
+        }
+
+
+        // ----------------------------------------------
+        // CREATE INVOICE ITEM
+        // ----------------------------------------------
+
+        const invoiceItem = {
+
+            ...product,
+
+            invoiceQuantity: 1
+        };
+
+
+        dispatch(
+            addItem(
+                invoiceItem
+            )
+        );
+
+
+        setProductSearch(
+            ""
+        );
+
+
+        setSelectedProduct(
+            ""
+        );
     }
 
 
@@ -505,34 +609,37 @@ export default function InvoiceHome() {
 
     function handleIncrease(item) {
 
+        const currentQuantity =
+            Number(item.invoiceQuantity) || 0;
+
+        const availableStock =
+            Number(item.quantity) || 0;
+
+
         if (
-            item.invoiceQuantity >=
-            item.quantity
+            currentQuantity >=
+            availableStock
         ) {
 
-            alert(
-                `Only ${item.quantity} units of ${item.name} are available in stock.`
+            toast.error(
+                `Only ${availableStock} units of ${item.name} are available in stock.`
             );
 
             return;
-
         }
 
 
         dispatch(
-
             updateQuantity({
 
                 productId:
                     item.id,
 
                 quantity:
-                    item.invoiceQuantity + 1
+                    currentQuantity + 1
 
             })
-
         );
-
     }
 
 
@@ -546,9 +653,7 @@ export default function InvoiceHome() {
     ) {
 
         if (value === "") {
-
             return;
-
         }
 
 
@@ -556,29 +661,33 @@ export default function InvoiceHome() {
             Number(value);
 
 
-        if (quantity < 1) {
+        if (
+            !Number.isInteger(quantity) ||
+            quantity < 1
+        ) {
 
             return;
-
         }
+
+
+        const availableStock =
+            Number(item.quantity) || 0;
 
 
         if (
             quantity >
-            item.quantity
+            availableStock
         ) {
 
-            alert(
-                `Only ${item.quantity} units of ${item.name} are available in stock.`
+            toast.error(
+                `Only ${availableStock} units of ${item.name} are available in stock.`
             );
 
             return;
-
         }
 
 
         dispatch(
-
             updateQuantity({
 
                 productId:
@@ -588,49 +697,8 @@ export default function InvoiceHome() {
                     quantity
 
             })
-
         );
-
     }
-
-
-    // ==================================================
-    // GRAND TOTAL
-    // ==================================================
-
-    const grandtotal =
-        draft.items.reduce(
-
-            (
-                total,
-                item
-            ) => {
-
-                const quantity =
-                    Number(
-                        item.invoiceQuantity
-                    ) || 0;
-
-
-                const salePrice =
-                    Number(
-                        item.salePrice
-                    ) || 0;
-
-
-                return (
-                    total +
-                    (
-                        quantity *
-                        salePrice
-                    )
-                );
-
-            },
-
-            0
-
-        );
 
 
     // ==================================================
@@ -650,8 +718,14 @@ export default function InvoiceHome() {
         setInvoiceLogs(
             logs
         );
-
     }
+
+
+    useEffect(() => {
+
+        loadInvoiceLogs();
+
+    }, []);
 
 
     // ==================================================
@@ -683,50 +757,37 @@ export default function InvoiceHome() {
                 invoice.customerName,
 
             total:
-                invoice.total,
+                Number(invoice.total) || 0,
+
+            date:
+                invoice.date || "",
 
             action:
                 action,
 
             timestamp:
-                new Date()
-                    .toLocaleString()
-
+                new Date().toLocaleString()
         };
 
 
         const updatedLogs = [
-
             newLog,
-
             ...existingLogs
-
         ];
 
 
         localStorage.setItem(
-
             INVOICE_LOG_KEY,
-
             JSON.stringify(
                 updatedLogs
             )
-
         );
 
 
         setInvoiceLogs(
             updatedLogs
         );
-
     }
-
-
-    useEffect(() => {
-
-        loadInvoiceLogs();
-
-    }, []);
 
 
     // ==================================================
@@ -748,26 +809,21 @@ export default function InvoiceHome() {
         const updatedLogs =
             existingLogs.filter(
                 (log) =>
-                    log.logId !==
-                    logId
+                    log.logId !== logId
             );
 
 
         localStorage.setItem(
-
             INVOICE_LOG_KEY,
-
             JSON.stringify(
                 updatedLogs
             )
-
         );
 
 
         setInvoiceLogs(
             updatedLogs
         );
-
     }
 
 
@@ -776,176 +832,152 @@ export default function InvoiceHome() {
     // ==================================================
 
     return (
+        <div className="min-h-screen bg-[#051424] text-[#d4e4fa] flex">
+            <Sidebar
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+            />
 
-        <div
-            className="
-                min-h-screen
-                w-full
-                bg-slate-800
-                text-zinc-100
-                flex
-                flex-col
-                items-center
-                p-4
-                sm:p-6
-                lg:p-8
-                antialiased
-            "
-        >
+            <div className={`flex-1 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${sidebarCollapsed ? "md:ml-0" : "md:ml-[260px]"} min-h-screen flex flex-col`}>
+                {/* RESPONSIVE TOP BAR */}
+                <header className="sticky top-0 bg-[#051424]/90 backdrop-blur-md border-b border-[#3c4a42] px-4 md:px-8 py-3.5 flex items-center justify-between z-30">
+                    <div className="flex items-center gap-3">
+                        {sidebarCollapsed && (
+                            <button
+                                onClick={() => setSidebarCollapsed(false)}
+                                className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#0d1c2d] border border-[#3c4a42] text-[#bbcabf] hover:text-[#4edea3] hover:border-[#10b981]/50 text-xs font-semibold transition-all cursor-pointer shadow-md"
+                                title="Expand Sidebar Slider"
+                            >
+                                <svg className="w-4 h-4 text-[#4edea3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                </svg>
+                                <span>Sidebar Slider</span>
+                            </button>
+                        )}
+                        <div className="flex items-center gap-3 md:hidden">
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="p-2 text-[#bbcabf] hover:text-white text-xl"
+                            >
+                                ☰
+                            </button>
+                            <span className="text-lg font-bold text-[#4edea3]">InvPro</span>
+                        </div>
+                    </div>
+                </header>
 
-
-            {/* ==================================================
-                MAIN CONTAINER
-            ================================================== */}
-
-            <div
-                className="
-                    w-full
-                    max-w-5xl
-                    flex
-                    flex-col
-                    items-center
-                    gap-6
-                "
-            >
+                <main className="p-4 sm:p-6 lg:p-8 flex-1 max-w-5xl w-full mx-auto">
+                    <div className="mx-auto flex flex-col items-center gap-6">
 
 
                 {/* ==================================================
                     HEADER
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        flex
-                        flex-col
-                        items-center
-                        text-center
-                        p-6
-                        rounded-2xl
-                        border
-                        border-slate-700/70
-                        bg-slate-700/70
-                        backdrop-blur-md
-                        shadow-xl
-                        space-y-2
-                    "
-                >
+                <div className="
+                    w-full
+                    flex
+                    flex-col
+                    items-center
+                    text-center
+                    p-6
+                    rounded-2xl
+                    border
+                    border-slate-700/70
+                    bg-slate-700/70
+                    backdrop-blur-md
+                    shadow-xl
+                    space-y-2
+                ">
 
-                    <h1
-                        className="
-                            text-3xl
-                            sm:text-4xl
-                            font-extrabold
-                            tracking-tight
-                            text-amber-500
-                            drop-shadow-md
-                        "
-                    >
-
+                    <h1 className="
+                        text-3xl
+                        sm:text-4xl
+                        font-extrabold
+                        tracking-tight
+                        text-amber-500
+                        drop-shadow-md
+                    ">
                         Create Invoice
-
                     </h1>
 
 
-                    <p
-                        className="
-                            text-sm
-                            sm:text-base
-                            font-medium
-                            text-slate-300
-                        "
-                    >
-
-                        Add customer details and products
-                        to generate a new invoice.
-
+                    <p className="
+                        text-sm
+                        sm:text-base
+                        font-medium
+                        text-slate-300
+                    ">
+                        Add customer details and products to generate a new invoice.
                     </p>
 
                 </div>
-
 
 
                 {/* ==================================================
                     CUSTOMER DETAILS
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        rounded-2xl
-                        border
-                        border-slate-700/70
-                        bg-slate-900/70
-                        backdrop-blur-md
-                        shadow-xl
-                        p-5
-                        sm:p-6
-                    "
-                >
+                <div className="
+                    w-full
+                    rounded-2xl
+                    border
+                    border-slate-700/70
+                    bg-slate-900/70
+                    backdrop-blur-md
+                    shadow-xl
+                    p-5
+                    sm:p-6
+                ">
 
-                    <h2
-                        className="
-                            text-xl
-                            font-bold
-                            text-white
-                            mb-5
-                            border-b
-                            border-slate-700
-                            pb-3
-                        "
-                    >
-
+                    <h2 className="
+                        text-xl
+                        font-bold
+                        text-white
+                        mb-5
+                        border-b
+                        border-slate-700
+                        pb-3
+                    ">
                         Customer Details
-
                     </h2>
 
 
-                    <div
-                        className="
-                            grid
-                            grid-cols-1
-                            md:grid-cols-2
-                            gap-5
-                        "
-                    >
+                    <div className="
+                        grid
+                        grid-cols-1
+                        md:grid-cols-2
+                        gap-5
+                    ">
 
 
                         {/* CUSTOMER NAME */}
 
                         <div>
 
-                            <label
-                                className="
-                                    block
-                                    mb-2
-                                    text-sm
-                                    font-semibold
-                                    text-slate-300
-                                "
-                            >
-
+                            <label className="
+                                block
+                                mb-2
+                                text-sm
+                                font-semibold
+                                text-slate-300
+                            ">
                                 Customer Name
-
                             </label>
 
 
                             <input
                                 type="text"
-                                {...register(
-                                    "customerName"
-                                )}
-                                value={
-                                    draft.customerName
-                                }
+                                {...register("customerName")}
+                                value={draft.customerName}
                                 onChange={(e) => {
 
                                     dispatch(
-
                                         setCustomerName(
                                             e.target.value
                                         )
-
                                     );
 
                                 }}
@@ -971,20 +1003,12 @@ export default function InvoiceHome() {
 
                             {errors.customerName && (
 
-                                <p
-                                    className="
-                                        text-rose-400
-                                        text-sm
-                                        mt-2
-                                    "
-                                >
-
-                                    {
-                                        errors
-                                            .customerName
-                                            .message
-                                    }
-
+                                <p className="
+                                    text-rose-400
+                                    text-sm
+                                    mt-2
+                                ">
+                                    {errors.customerName.message}
                                 </p>
 
                             )}
@@ -992,42 +1016,31 @@ export default function InvoiceHome() {
                         </div>
 
 
-
                         {/* DATE */}
 
                         <div>
 
-                            <label
-                                className="
-                                    block
-                                    mb-2
-                                    text-sm
-                                    font-semibold
-                                    text-slate-300
-                                "
-                            >
-
+                            <label className="
+                                block
+                                mb-2
+                                text-sm
+                                font-semibold
+                                text-slate-300
+                            ">
                                 Invoice Date
-
                             </label>
 
 
                             <input
                                 type="date"
-                                {...register(
-                                    "date"
-                                )}
-                                value={
-                                    draft.date
-                                }
+                                {...register("date")}
+                                value={draft.date}
                                 onChange={(e) => {
 
                                     dispatch(
-
                                         setDate(
                                             e.target.value
                                         )
-
                                     );
 
                                 }}
@@ -1040,11 +1053,7 @@ export default function InvoiceHome() {
                                     border-slate-700
                                     bg-slate-950/70
                                     text-white
-                                    [color-scheme: dark]
-                                    [&::-webkit-calendar-picker-indicator]:invert
-                                    // [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                                    // [&::-webkit-calendar-picker-indicator]:opacity-20
-                                    // hover:[&::-webkit-calendar-picker-indicator]:opacity-100
+                                    [color-scheme:dark]
                                     outline-none
                                     focus:border-emerald-500
                                     focus:ring-2
@@ -1056,20 +1065,12 @@ export default function InvoiceHome() {
 
                             {errors.date && (
 
-                                <p
-                                    className="
-                                        text-rose-400
-                                        text-sm
-                                        mt-2
-                                    "
-                                >
-
-                                    {
-                                        errors
-                                            .date
-                                            .message
-                                    }
-
+                                <p className="
+                                    text-rose-400
+                                    text-sm
+                                    mt-2
+                                ">
+                                    {errors.date.message}
                                 </p>
 
                             )}
@@ -1081,57 +1082,46 @@ export default function InvoiceHome() {
                 </div>
 
 
-
                 {/* ==================================================
                     PRODUCT SEARCH
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        rounded-2xl
-                        border
-                        border-slate-700/70
-                        bg-slate-900/70
-                        backdrop-blur-md
-                        shadow-xl
-                        p-5
-                        sm:p-6
-                    "
-                >
+                <div className="
+                    w-full
+                    rounded-2xl
+                    border
+                    border-slate-700/70
+                    bg-slate-900/70
+                    backdrop-blur-md
+                    shadow-xl
+                    p-5
+                    sm:p-6
+                ">
 
-                    <h2
-                        className="
-                            text-xl
-                            font-bold
-                            text-white
-                            mb-5
-                            border-b
-                            border-slate-700
-                            pb-3
-                        "
-                    >
-
+                    <h2 className="
+                        text-xl
+                        font-bold
+                        text-white
+                        mb-5
+                        border-b
+                        border-slate-700
+                        pb-3
+                    ">
                         Add Products
-
                     </h2>
 
 
-                    <div
-                        className="
-                            relative
-                            flex
-                            flex-col
-                            sm:flex-row
-                            gap-3
-                        "
-                    >
+                    <div className="
+                        relative
+                        flex
+                        flex-col
+                        sm:flex-row
+                        gap-3
+                    ">
 
                         <input
                             type="text"
-                            value={
-                                productSearch
-                            }
+                            value={productSearch}
                             onChange={(e) => {
 
                                 setProductSearch(
@@ -1164,9 +1154,7 @@ export default function InvoiceHome() {
 
                         <button
                             type="button"
-                            onClick={
-                                handleaddItem
-                            }
+                            onClick={handleaddItem}
                             className="
                                 bg-emerald-700
                                 hover:bg-emerald-600
@@ -1183,44 +1171,36 @@ export default function InvoiceHome() {
                                 cursor-pointer
                             "
                         >
-
                             + Add Item
-
                         </button>
-
 
 
                         {/* SEARCH RESULTS */}
 
                         {productSearch && (
 
-                            <div
-                                className="
-                                    absolute
-                                    z-50
-                                    top-full
-                                    left-0
-                                    right-0
-                                    mt-2
-                                    bg-slate-950
-                                    border
-                                    border-slate-700
-                                    rounded-xl
-                                    shadow-2xl
-                                    overflow-hidden
-                                "
-                            >
+                            <div className="
+                                absolute
+                                z-50
+                                top-full
+                                left-0
+                                right-0
+                                mt-2
+                                bg-slate-950
+                                border
+                                border-slate-700
+                                rounded-xl
+                                shadow-2xl
+                                overflow-hidden
+                            ">
 
-                                {filteredProducts.length >
-                                0 ? (
+                                {filteredProducts.length > 0 ? (
 
                                     filteredProducts.map(
                                         (product) => (
 
                                             <button
-                                                key={
-                                                    product.id
-                                                }
+                                                key={product.id}
                                                 type="button"
                                                 onClick={() =>
                                                     handleSelectProduct(
@@ -1239,62 +1219,45 @@ export default function InvoiceHome() {
                                                 "
                                             >
 
-                                                <div
-                                                    className="
-                                                        flex
-                                                        items-center
-                                                        justify-between
-                                                        gap-4
-                                                    "
-                                                >
+                                                <div className="
+                                                    flex
+                                                    items-center
+                                                    justify-between
+                                                    gap-4
+                                                ">
 
                                                     <div>
 
-                                                        <p
-                                                            className="
-                                                                font-semibold
-                                                                text-white
-                                                            "
-                                                        >
-
-                                                            {
-                                                                product.name
-                                                            }
-
+                                                        <p className="
+                                                            font-semibold
+                                                            text-white
+                                                        ">
+                                                            {product.name}
                                                         </p>
 
 
-                                                        <p
-                                                            className="
-                                                                text-xs
-                                                                text-slate-400
-                                                                mt-1
-                                                            "
-                                                        >
-
-                                                            {
-                                                                product.category
-                                                            }
-
+                                                        <p className="
+                                                            text-xs
+                                                            text-slate-400
+                                                            mt-1
+                                                        ">
+                                                            {product.category}
                                                         </p>
 
                                                     </div>
 
 
-                                                    <div
-                                                        className="
-                                                            text-right
-                                                            text-emerald-400
-                                                            font-semibold
-                                                            whitespace-nowrap
-                                                        "
-                                                    >
+                                                    <div className="
+                                                        text-right
+                                                        text-emerald-400
+                                                        font-semibold
+                                                        whitespace-nowrap
+                                                    ">
 
                                                         Rs.{" "}
 
                                                         {Number(
-                                                            product.salePrice ||
-                                                            0
+                                                            product.salePrice || 0
                                                         ).toLocaleString()}
 
                                                     </div>
@@ -1308,17 +1271,13 @@ export default function InvoiceHome() {
 
                                 ) : (
 
-                                    <div
-                                        className="
-                                            px-4
-                                            py-5
-                                            text-center
-                                            text-slate-500
-                                        "
-                                    >
-
+                                    <div className="
+                                        px-4
+                                        py-5
+                                        text-center
+                                        text-slate-500
+                                    ">
                                         No products found.
-
                                     </div>
 
                                 )}
@@ -1332,67 +1291,56 @@ export default function InvoiceHome() {
                 </div>
 
 
-
                 {/* ==================================================
                     INVOICE ITEMS
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        rounded-2xl
-                        border
-                        border-slate-700/70
-                        bg-slate-900/70
-                        backdrop-blur-md
-                        shadow-xl
-                        p-5
-                        sm:p-6
-                    "
-                >
+                <div className="
+                    w-full
+                    rounded-2xl
+                    border
+                    border-slate-700/70
+                    bg-slate-900/70
+                    backdrop-blur-md
+                    shadow-xl
+                    p-5
+                    sm:p-6
+                ">
 
-                    <div
-                        className="
-                            flex
-                            flex-col
-                            sm:flex-row
-                            sm:items-center
-                            sm:justify-between
-                            gap-3
-                            border-b
-                            border-slate-700
-                            pb-4
-                            mb-5
-                        "
-                    >
+                    <div className="
+                        flex
+                        flex-col
+                        sm:flex-row
+                        sm:items-center
+                        sm:justify-between
+                        gap-3
+                        border-b
+                        border-slate-700
+                        pb-4
+                        mb-5
+                    ">
 
-                        <h2
-                            className="
-                                text-xl
-                                font-bold
-                                text-white
-                            "
-                        >
-
+                        <h2 className="
+                            text-xl
+                            font-bold
+                            text-white
+                        ">
                             Invoice Items
-
                         </h2>
 
 
-                        <span
-                            className="
-                                w-fit
-                                text-xs
-                                font-semibold
-                                px-3
-                                py-1
-                                bg-emerald-500/10
-                                border
-                                border-emerald-500/20
-                                text-emerald-400
-                                rounded-full
-                            "
-                        >
+                        <span className="
+                            w-fit
+                            text-xs
+                            font-semibold
+                            px-3
+                            py-1
+                            bg-emerald-500/10
+                            border
+                            border-emerald-500/20
+                            text-emerald-400
+                            rounded-full
+                        ">
 
                             {draft.items.length}{" "}
 
@@ -1407,41 +1355,34 @@ export default function InvoiceHome() {
                     </div>
 
 
-
                     {/* TABLE */}
 
-                    <div
-                        className="
-                            overflow-x-auto
-                            rounded-xl
-                            border
-                            border-slate-700/80
-                        "
-                    >
+                    <div className="
+                        overflow-x-auto
+                        rounded-xl
+                        border
+                        border-slate-700/80
+                    ">
 
-                        <table
-                            className="
-                                w-full
-                                text-left
-                                border-collapse
-                                min-w-[800px]
-                            "
-                        >
+                        <table className="
+                            w-full
+                            text-left
+                            border-collapse
+                            min-w-[800px]
+                        ">
 
                             <thead>
 
-                                <tr
-                                    className="
-                                        bg-slate-950
-                                        text-slate-400
-                                        text-xs
-                                        font-semibold
-                                        uppercase
-                                        tracking-wider
-                                        border-b
-                                        border-slate-700
-                                    "
-                                >
+                                <tr className="
+                                    bg-slate-950
+                                    text-slate-400
+                                    text-xs
+                                    font-semibold
+                                    uppercase
+                                    tracking-wider
+                                    border-b
+                                    border-slate-700
+                                ">
 
                                     <th className="py-3.5 px-4">
                                         Product
@@ -1472,14 +1413,12 @@ export default function InvoiceHome() {
                             </thead>
 
 
-                            <tbody
-                                className="
-                                    divide-y
-                                    divide-slate-800
-                                    bg-slate-900/60
-                                    text-sm
-                                "
-                            >
+                            <tbody className="
+                                divide-y
+                                divide-slate-800
+                                bg-slate-900/60
+                                text-sm
+                            ">
 
                                 {draft.items.length === 0 ? (
 
@@ -1494,10 +1433,7 @@ export default function InvoiceHome() {
                                                 italic
                                             "
                                         >
-
-                                            No items added to
-                                            invoice yet.
-
+                                            No items added to invoice yet.
                                         </td>
 
                                     </tr>
@@ -1508,9 +1444,7 @@ export default function InvoiceHome() {
                                         (item) => (
 
                                             <tr
-                                                key={
-                                                    item.id
-                                                }
+                                                key={item.id}
                                                 className="
                                                     hover:bg-slate-800/50
                                                     transition-colors
@@ -1519,70 +1453,55 @@ export default function InvoiceHome() {
 
                                                 {/* PRODUCT */}
 
-                                                <td
-                                                    className="
-                                                        py-4
-                                                        px-4
-                                                        font-medium
-                                                        text-white
-                                                    "
-                                                >
-
+                                                <td className="
+                                                    py-4
+                                                    px-4
+                                                    font-medium
+                                                    text-white
+                                                ">
                                                     {item.name}
-
                                                 </td>
 
 
                                                 {/* QUANTITY */}
 
-                                                <td
-                                                    className="
-                                                        py-4
-                                                        px-4
-                                                    "
-                                                >
+                                                <td className="
+                                                    py-4
+                                                    px-4
+                                                ">
 
-                                                    <div
-                                                        className="
-                                                            flex
-                                                            items-center
-                                                            justify-center
-                                                            gap-2
-                                                        "
-                                                    >
-
-                                                        {/* MINUS */}
+                                                    <div className="
+                                                        flex
+                                                        items-center
+                                                        justify-center
+                                                        gap-2
+                                                    ">
 
                                                         <button
                                                             type="button"
                                                             onClick={() => {
 
                                                                 if (
-                                                                    item.invoiceQuantity >
-                                                                    1
+                                                                    item.invoiceQuantity > 1
                                                                 ) {
 
                                                                     dispatch(
-
                                                                         updateQuantity({
 
                                                                             productId:
                                                                                 item.id,
 
                                                                             quantity:
-                                                                                item.invoiceQuantity -
-                                                                                1
+                                                                                item.invoiceQuantity - 1
 
                                                                         })
-
                                                                     );
 
                                                                 }
 
                                                             }}
                                                             disabled={
-                                                                item.invoiceQuantity <=
-                                                                1
+                                                                item.invoiceQuantity <= 1
                                                             }
                                                             className="
                                                                 w-7
@@ -1601,13 +1520,9 @@ export default function InvoiceHome() {
                                                                 disabled:cursor-not-allowed
                                                             "
                                                         >
-
                                                             -
-
                                                         </button>
 
-
-                                                        {/* QUANTITY INPUT */}
 
                                                         <input
                                                             type="number"
@@ -1639,8 +1554,6 @@ export default function InvoiceHome() {
                                                         />
 
 
-                                                        {/* PLUS */}
-
                                                         <button
                                                             type="button"
                                                             onClick={() =>
@@ -1669,9 +1582,7 @@ export default function InvoiceHome() {
                                                                 disabled:cursor-not-allowed
                                                             "
                                                         >
-
                                                             +
-
                                                         </button>
 
                                                     </div>
@@ -1681,38 +1592,20 @@ export default function InvoiceHome() {
 
                                                 {/* AVAILABLE STOCK */}
 
-                                                <td
-                                                    className="
-                                                        py-4
-                                                        px-4
-                                                        text-center
-                                                    "
-                                                >
+                                                <td className="
+                                                    py-4
+                                                    px-4
+                                                    text-center
+                                                ">
 
                                                     <span
-                                                        className={`
-                                                            inline-flex
-                                                            items-center
-                                                            px-3
-                                                            py-1
-                                                            rounded-full
-                                                            text-xs
-                                                            font-semibold
-                                                            ${
-                                                                item.quantity <=
-                                                                0
-
-                                                                    ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-
-                                                                    : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                                            }
-                                                        `}
+                                                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                                            item.quantity <= 0
+                                                                ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                                                : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                                        }`}
                                                     >
-
-                                                        {
-                                                            item.quantity
-                                                        }
-
+                                                        {item.quantity}
                                                     </span>
 
                                                 </td>
@@ -1720,21 +1613,18 @@ export default function InvoiceHome() {
 
                                                 {/* SALE PRICE */}
 
-                                                <td
-                                                    className="
-                                                        py-4
-                                                        px-4
-                                                        text-right
-                                                        font-medium
-                                                        text-slate-300
-                                                    "
-                                                >
+                                                <td className="
+                                                    py-4
+                                                    px-4
+                                                    text-right
+                                                    font-medium
+                                                    text-slate-300
+                                                ">
 
                                                     Rs.{" "}
 
                                                     {Number(
-                                                        item.salePrice ||
-                                                        0
+                                                        item.salePrice || 0
                                                     ).toLocaleString()}
 
                                                 </td>
@@ -1742,15 +1632,13 @@ export default function InvoiceHome() {
 
                                                 {/* TOTAL */}
 
-                                                <td
-                                                    className="
-                                                        py-4
-                                                        px-4
-                                                        text-right
-                                                        font-bold
-                                                        text-emerald-400
-                                                    "
-                                                >
+                                                <td className="
+                                                    py-4
+                                                    px-4
+                                                    text-right
+                                                    font-bold
+                                                    text-emerald-400
+                                                ">
 
                                                     Rs.{" "}
 
@@ -1760,7 +1648,6 @@ export default function InvoiceHome() {
                                                                 item.invoiceQuantity
                                                             ) || 0
                                                         ) *
-
                                                         (
                                                             Number(
                                                                 item.salePrice
@@ -1773,27 +1660,21 @@ export default function InvoiceHome() {
 
                                                 {/* DELETE */}
 
-                                                <td
-                                                    className="
-                                                        py-4
-                                                        px-4
-                                                        text-center
-                                                    "
-                                                >
+                                                <td className="
+                                                    py-4
+                                                    px-4
+                                                    text-center
+                                                ">
 
                                                     <button
                                                         type="button"
                                                         onClick={() => {
 
                                                             dispatch(
-
                                                                 deleteProduct({
-
                                                                     productId:
                                                                         item.id
-
                                                                 })
-
                                                             );
 
                                                         }}
@@ -1810,9 +1691,7 @@ export default function InvoiceHome() {
                                                             cursor-pointer
                                                         "
                                                     >
-
                                                         Delete
-
                                                     </button>
 
                                                 </td>
@@ -1831,43 +1710,32 @@ export default function InvoiceHome() {
                     </div>
 
 
+                    {/* GRAND TOTAL */}
 
-                    {/* ==================================================
-                        GRAND TOTAL
-                    ================================================== */}
+                    <div className="
+                        mt-6
+                        flex
+                        flex-col
+                        items-center
+                        border-t
+                        border-slate-700
+                        pt-6
+                    ">
 
-                    <div
-                        className="
-                            mt-6
-                            flex
-                            flex-col
-                            items-center
-                            border-t
-                            border-slate-700
-                            pt-6
-                        "
-                    >
-
-                        <p
-                            className="
-                                text-sm
-                                text-slate-400
-                                mb-1
-                            "
-                        >
-
+                        <p className="
+                            text-sm
+                            text-slate-400
+                            mb-1
+                        ">
                             Grand Total
-
                         </p>
 
 
-                        <h2
-                            className="
-                                text-3xl
-                                font-extrabold
-                                text-emerald-400
-                            "
-                        >
+                        <h2 className="
+                            text-3xl
+                            font-extrabold
+                            text-emerald-400
+                        ">
 
                             Rs.{" "}
 
@@ -1880,108 +1748,88 @@ export default function InvoiceHome() {
                 </div>
 
 
-
                 {/* ==================================================
                     RECENT ACTIVITY
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        rounded-2xl
-                        border
-                        border-slate-700/70
-                        bg-slate-900/70
-                        backdrop-blur-md
-                        shadow-xl
-                        p-5
-                        sm:p-6
-                    "
-                >
+                <div className="
+                    w-full
+                    rounded-2xl
+                    border
+                    border-slate-700/70
+                    bg-slate-900/70
+                    backdrop-blur-md
+                    shadow-xl
+                    p-5
+                    sm:p-6
+                ">
 
-                    <div
-                        className="
-                            flex
-                            flex-col
-                            sm:flex-row
-                            sm:items-center
-                            sm:justify-between
-                            gap-3
-                            border-b
-                            border-slate-700
-                            pb-4
-                            mb-5
-                        "
-                    >
+                    <div className="
+                        flex
+                        flex-col
+                        sm:flex-row
+                        sm:items-center
+                        sm:justify-between
+                        gap-3
+                        border-b
+                        border-slate-700
+                        pb-4
+                        mb-5
+                    ">
 
-                        <h2
-                            className="
-                                text-xl
-                                font-bold
-                                text-white
-                            "
-                        >
-
+                        <h2 className="
+                            text-xl
+                            font-bold
+                            text-white
+                        ">
                             Recent Invoice Logs
-
                         </h2>
 
 
-                        <span
-                            className="
-                                w-fit
-                                text-xs
-                                font-semibold
-                                px-3
-                                py-1
-                                bg-blue-500/10
-                                border
-                                border-blue-500/20
-                                text-blue-400
-                                rounded-full
-                            "
-                        >
-
+                        <span className="
+                            w-fit
+                            text-xs
+                            font-semibold
+                            px-3
+                            py-1
+                            bg-blue-500/10
+                            border
+                            border-blue-500/20
+                            text-blue-400
+                            rounded-full
+                        ">
                             {invoiceLogs.length} Activities
-
                         </span>
 
                     </div>
 
 
+                    <div className="
+                        overflow-x-auto
+                        rounded-xl
+                        border
+                        border-slate-700/80
+                    ">
 
-                    <div
-                        className="
-                            overflow-x-auto
-                            rounded-xl
-                            border
-                            border-slate-700/80
-                        "
-                    >
-
-                        <table
-                            className="
-                                w-full
-                                text-left
-                                border-collapse
-                                min-w-[800px]
-                            "
-                        >
+                        <table className="
+                            w-full
+                            text-left
+                            border-collapse
+                            min-w-[800px]
+                        ">
 
                             <thead>
 
-                                <tr
-                                    className="
-                                        bg-slate-950
-                                        text-slate-400
-                                        text-xs
-                                        font-semibold
-                                        uppercase
-                                        tracking-wider
-                                        border-b
-                                        border-slate-700
-                                    "
-                                >
+                                <tr className="
+                                    bg-slate-950
+                                    text-slate-400
+                                    text-xs
+                                    font-semibold
+                                    uppercase
+                                    tracking-wider
+                                    border-b
+                                    border-slate-700
+                                ">
 
                                     <th className="py-3 px-4">
                                         Invoice ID
@@ -2012,13 +1860,11 @@ export default function InvoiceHome() {
                             </thead>
 
 
-                            <tbody
-                                className="
-                                    divide-y
-                                    divide-slate-800
-                                    bg-slate-900/60
-                                "
-                            >
+                            <tbody className="
+                                divide-y
+                                divide-slate-800
+                                bg-slate-900/60
+                            ">
 
                                 {invoiceLogs.length === 0 ? (
 
@@ -2033,9 +1879,7 @@ export default function InvoiceHome() {
                                                 italic
                                             "
                                         >
-
                                             No recent invoice activity.
-
                                         </td>
 
                                     </tr>
@@ -2048,125 +1892,83 @@ export default function InvoiceHome() {
                                             (log) => (
 
                                                 <tr
-                                                    key={
-                                                        log.logId
-                                                    }
+                                                    key={log.logId}
                                                     className="
                                                         hover:bg-slate-800/50
                                                         transition-colors
                                                     "
                                                 >
 
-                                                    <td
-                                                        className="
-                                                            py-3
-                                                            px-4
-                                                            font-mono
-                                                            text-slate-300
-                                                        "
-                                                    >
-
-                                                        {
-                                                            log.invoiceId
-                                                        }
-
+                                                    <td className="
+                                                        py-3
+                                                        px-4
+                                                        font-mono
+                                                        text-slate-300
+                                                    ">
+                                                        {log.invoiceId}
                                                     </td>
 
 
-                                                    <td
-                                                        className="
-                                                            py-3
-                                                            px-4
-                                                            text-white
-                                                        "
-                                                    >
-
-                                                        {
-                                                            log.customerName
-                                                        }
-
+                                                    <td className="
+                                                        py-3
+                                                        px-4
+                                                        text-white
+                                                    ">
+                                                        {log.customerName || "—"}
                                                     </td>
 
 
-                                                    <td
-                                                        className="
-                                                            py-3
-                                                            px-4
-                                                            text-center
-                                                        "
-                                                    >
+                                                    <td className="
+                                                        py-3
+                                                        px-4
+                                                        text-center
+                                                    ">
 
                                                         <span
-                                                            className={`
-                                                                inline-flex
-                                                                px-2.5
-                                                                py-1
-                                                                rounded-full
-                                                                text-xs
-                                                                font-semibold
-                                                                ${
-                                                                    log.action ===
-                                                                    "Added"
-
-                                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-
-                                                                        : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                                                                }
-                                                            `}
+                                                            className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                                                log.action === "Added"
+                                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                                    : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                                                            }`}
                                                         >
-
-                                                            {
-                                                                log.action
-                                                            }
-
+                                                            {log.action}
                                                         </span>
 
                                                     </td>
 
 
-                                                    <td
-                                                        className="
-                                                            py-3
-                                                            px-4
-                                                            text-right
-                                                            font-semibold
-                                                            text-emerald-400
-                                                        "
-                                                    >
+                                                    <td className="
+                                                        py-3
+                                                        px-4
+                                                        text-right
+                                                        font-semibold
+                                                        text-emerald-400
+                                                    ">
 
                                                         Rs.{" "}
 
                                                         {Number(
-                                                            log.total ||
-                                                            0
+                                                            log.total || 0
                                                         ).toLocaleString()}
 
                                                     </td>
 
 
-                                                    <td
-                                                        className="
-                                                            py-3
-                                                            px-4
-                                                            text-slate-500
-                                                            text-sm
-                                                        "
-                                                    >
-
-                                                        {
-                                                            log.timestamp
-                                                        }
-
+                                                    <td className="
+                                                        py-3
+                                                        px-4
+                                                        text-slate-500
+                                                        text-sm
+                                                    ">
+                                                        {log.timestamp}
                                                     </td>
 
 
-                                                    <td
-                                                        className="
-                                                            py-3
-                                                            px-4
-                                                            text-center
-                                                        "
-                                                    >
+                                                    <td className="
+                                                        py-3
+                                                        px-4
+                                                        text-center
+                                                    ">
 
                                                         <button
                                                             type="button"
@@ -2187,9 +1989,7 @@ export default function InvoiceHome() {
                                                                 transition-colors
                                                             "
                                                         >
-
                                                             Delete
-
                                                         </button>
 
                                                     </td>
@@ -2210,30 +2010,23 @@ export default function InvoiceHome() {
                 </div>
 
 
-
                 {/* ==================================================
                     MAIN ACTIONS
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        flex
-                        flex-col
-                        sm:flex-row
-                        justify-center
-                        items-center
-                        gap-3
-                    "
-                >
-
-                    {/* CREATE */}
+                <div className="
+                    w-full
+                    flex
+                    flex-col
+                    sm:flex-row
+                    justify-center
+                    items-center
+                    gap-3
+                ">
 
                     <button
                         type="button"
-                        onClick={
-                            handleSaveInvoice
-                        }
+                        onClick={handleSaveInvoice}
                         className="
                             w-full
                             sm:w-auto
@@ -2252,13 +2045,9 @@ export default function InvoiceHome() {
                             cursor-pointer
                         "
                     >
-
                         Create Invoice
-
                     </button>
 
-
-                    {/* CLEAR */}
 
                     <button
                         type="button"
@@ -2268,9 +2057,13 @@ export default function InvoiceHome() {
                                 clearDraft()
                             );
 
-                            setProductSearch("");
+                            setProductSearch(
+                                ""
+                            );
 
-                            setSelectedProduct("");
+                            setSelectedProduct(
+                                ""
+                            );
 
                         }}
                         className="
@@ -2290,40 +2083,31 @@ export default function InvoiceHome() {
                             cursor-pointer
                         "
                     >
-
                         Clear Invoice
-
                     </button>
 
                 </div>
-
 
 
                 {/* ==================================================
                     NAVIGATION
                 ================================================== */}
 
-                <div
-                    className="
-                        w-full
-                        flex
-                        flex-col
-                        sm:flex-row
-                        justify-center
-                        items-center
-                        gap-3
-                        pt-2
-                    "
-                >
-
-                    {/* HOME */}
+                <div className="
+                    w-full
+                    flex
+                    flex-col
+                    sm:flex-row
+                    justify-center
+                    items-center
+                    gap-3
+                    pt-2
+                ">
 
                     <button
                         type="button"
                         onClick={() =>
-                            router.push(
-                                "/Home"
-                            )
+                            router.push("/Home")
                         }
                         className="
                             w-full
@@ -2342,20 +2126,14 @@ export default function InvoiceHome() {
                             cursor-pointer
                         "
                     >
-
                         Go to Home Page
-
                     </button>
 
-
-                    {/* INVOICE DASHBOARD */}
 
                     <button
                         type="button"
                         onClick={() =>
-                            router.push(
-                                "/Invoices"
-                            )
+                            router.push("/Invoices")
                         }
                         className="
                             w-full
@@ -2376,17 +2154,14 @@ export default function InvoiceHome() {
                             cursor-pointer
                         "
                     >
-
                         Go to Invoice Page
-
                     </button>
 
                 </div>
 
             </div>
-
+                </main>
+            </div>
         </div>
-
     );
-
 }
