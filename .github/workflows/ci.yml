@@ -12,7 +12,8 @@ on:
       - master
 
 jobs:
-  build-and-test:
+  backend-tests:
+    name: Backend Unit & Integration Tests
     runs-on: ubuntu-latest
 
     env:
@@ -21,28 +22,52 @@ jobs:
       JWT_SECRET_KEY: ci_secret_key_for_testing_12345
 
     steps:
-      # 1. Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
 
-      # 3. Install dependencies
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r backend/requirements.txt
 
-      # 4. Run backend tests
-      - name: Run Tests
+      - name: Run Backend Tests
         env:
           TESTING: "True"
           DATABASE_URL: "sqlite:///:memory:"
           JWT_SECRET_KEY: ci_secret_key_for_testing_12345
         run: |
-          python -m pytest tests -v
+          python -m pytest backend/tests -v
+
+  frontend-tests:
+    name: Frontend Quality Gates & Unit/Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Static Code Analysis (ESLint)
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Run Frontend Tests & Coverage Quality Gates
+        working-directory: ./frontend
+        run: npm run test:coverage

@@ -1,60 +1,8 @@
-def get_admin_token(client):
-
-    client.post(
-        "/auth/register",
-        json={
-            "email": "admin@example.com",
-            "password": "Admin123!",
-            "role": "ADMIN"
-        }
-    )
-
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": "admin@example.com",
-            "password": "Admin123!"
-        }
-    )
-
-    assert response.status_code == 200
-
-    return response.json()["access_token"]
-
-
-def get_sales_manager_token(client):
-
-    client.post(
-        "/auth/register",
-        json={
-            "email": "manager@example.com",
-            "password": "Manager123!",
-            "role": "SALES_MANAGER"
-        }
-    )
-
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": "manager@example.com",
-            "password": "Manager123!"
-        }
-    )
-
-    assert response.status_code == 200
-
-    return response.json()["access_token"]
-
-
-def create_test_product(client):
-
-    admin_token = get_admin_token(client)
+def create_test_product(client, admin_headers):
 
     response = client.post(
         "/products",
-        headers={
-            "Authorization": f"Bearer {admin_token}"
-        },
+        headers=admin_headers,
         data={
             "name": "Test Product",
             "category": "Electronics",
@@ -71,17 +19,13 @@ def create_test_product(client):
     return response.json()
 
 
-def test_create_invoice(client):
+def test_create_invoice(client, admin_headers, sales_manager_headers):
 
-    product = create_test_product(client)
-
-    manager_token = get_sales_manager_token(client)
+    product = create_test_product(client, admin_headers)
 
     response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "customer_email": "john@example.com",
@@ -111,17 +55,13 @@ def test_create_invoice(client):
     assert float(data["items"][0]["subtotal"]) == 360
 
 
-def test_invoice_reduces_stock(client):
+def test_invoice_reduces_stock(client, admin_headers, sales_manager_headers):
 
-    product = create_test_product(client)
-
-    manager_token = get_sales_manager_token(client)
+    product = create_test_product(client, admin_headers)
 
     response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "items": [
@@ -135,25 +75,19 @@ def test_invoice_reduces_stock(client):
 
     assert response.status_code == 201
 
-    product_response = client.get(
-        f"/products/{product['id']}"
-    )
+    product_response = client.get(f"/products/{product['id']}")
 
     assert product_response.status_code == 200
     assert product_response.json()["quantity"] == 7
 
 
-def test_invoice_insufficient_stock(client):
+def test_invoice_insufficient_stock(client, admin_headers, sales_manager_headers):
 
-    product = create_test_product(client)
-
-    manager_token = get_sales_manager_token(client)
+    product = create_test_product(client, admin_headers)
 
     response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "items": [
@@ -170,17 +104,13 @@ def test_invoice_insufficient_stock(client):
     assert "Insufficient stock" in response.json()["detail"]
 
 
-def test_get_invoices(client):
+def test_get_invoices(client, admin_headers, sales_manager_headers):
 
-    product = create_test_product(client)
-
-    manager_token = get_sales_manager_token(client)
+    product = create_test_product(client, admin_headers)
 
     create_response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "items": [
@@ -194,9 +124,7 @@ def test_get_invoices(client):
 
     assert create_response.status_code == 201
 
-    response = client.get(
-        "/invoices"
-    )
+    response = client.get("/invoices")
 
     assert response.status_code == 200
 
@@ -206,17 +134,13 @@ def test_get_invoices(client):
     assert invoices[0]["customer_name"] == "John Doe"
 
 
-def test_get_invoice(client):
+def test_get_invoice(client, admin_headers, sales_manager_headers):
 
-    product = create_test_product(client)
-
-    manager_token = get_sales_manager_token(client)
+    product = create_test_product(client, admin_headers)
 
     create_response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "items": [
@@ -232,25 +156,59 @@ def test_get_invoice(client):
 
     invoice_id = create_response.json()["id"]
 
-    response = client.get(
-        f"/invoices/{invoice_id}"
-    )
+    response = client.get(f"/invoices/{invoice_id}")
 
     assert response.status_code == 200
     assert response.json()["id"] == invoice_id
 
 
-def test_delete_invoice_restores_stock(client):
+def test_get_invoice_not_found(client):
 
-    product = create_test_product(client)
+    response = client.get("/invoices/99999")
 
-    manager_token = get_sales_manager_token(client)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Invoice not found"
+
+
+def test_update_invoice(client, admin_headers, sales_manager_headers):
+
+    product = create_test_product(client, admin_headers)
 
     create_response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
+        json={
+            "customer_name": "John Doe",
+            "items": [
+                {
+                    "product_id": product["id"],
+                    "quantity": 1
+                }
+            ]
+        }
+    )
+
+    invoice_id = create_response.json()["id"]
+
+    update_response = client.put(
+        f"/invoices/{invoice_id}",
+        json={
+            "customer_name": "Jane Smith",
+            "status": "unpaid"
+        }
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["customer_name"] == "Jane Smith"
+
+
+def test_delete_invoice_restores_stock(client, admin_headers, sales_manager_headers):
+
+    product = create_test_product(client, admin_headers)
+
+    create_response = client.post(
+        "/invoices",
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "items": [
@@ -266,34 +224,31 @@ def test_delete_invoice_restores_stock(client):
 
     invoice_id = create_response.json()["id"]
 
-    product_response = client.get(
-        f"/products/{product['id']}"
-    )
+    product_response = client.get(f"/products/{product['id']}")
 
     assert product_response.json()["quantity"] == 6
 
-    response = client.delete(
-        f"/invoices/{invoice_id}"
-    )
+    response = client.delete(f"/invoices/{invoice_id}")
 
     assert response.status_code == 204
 
-    product_response = client.get(
-        f"/products/{product['id']}"
-    )
+    product_response = client.get(f"/products/{product['id']}")
 
     assert product_response.json()["quantity"] == 10
 
 
-def test_invoice_unknown_product(client):
+def test_delete_invoice_not_found(client):
 
-    manager_token = get_sales_manager_token(client)
+    response = client.delete("/invoices/99999")
+
+    assert response.status_code == 404
+
+
+def test_invoice_unknown_product(client, sales_manager_headers):
 
     response = client.post(
         "/invoices",
-        headers={
-            "Authorization": f"Bearer {manager_token}"
-        },
+        headers=sales_manager_headers,
         json={
             "customer_name": "John Doe",
             "items": [
@@ -308,3 +263,37 @@ def test_invoice_unknown_product(client):
     assert response.status_code == 400
 
     assert "not found" in response.json()["detail"]
+
+
+def test_get_invoice_pdf(client, admin_headers, sales_manager_headers):
+
+    product = create_test_product(client, admin_headers)
+
+    create_response = client.post(
+        "/invoices",
+        headers=sales_manager_headers,
+        json={
+            "customer_name": "John Doe",
+            "items": [
+                {
+                    "product_id": product["id"],
+                    "quantity": 1
+                }
+            ]
+        }
+    )
+
+    invoice_id = create_response.json()["id"]
+
+    pdf_response = client.get(f"/invoices/{invoice_id}/pdf")
+
+    assert pdf_response.status_code == 200
+    assert pdf_response.headers["content-type"] == "application/pdf"
+    assert len(pdf_response.content) > 0
+
+
+def test_get_invoice_pdf_not_found(client):
+
+    pdf_response = client.get("/invoices/99999/pdf")
+
+    assert pdf_response.status_code == 404

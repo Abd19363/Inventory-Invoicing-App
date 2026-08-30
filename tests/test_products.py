@@ -1,32 +1,18 @@
-def get_admin_token(client):
-
-    client.post(
-        "/auth/register",
-        json={
-            "email": "admin@example.com",
-            "password": "Admin123!",
-            "role": "ADMIN"
-        }
-    )
-
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": "admin@example.com",
-            "password": "Admin123!"
-        }
-    )
-
-    return response.json()["access_token"]
+import io
+from PIL import Image
 
 
-def create_product(client, token):
+def get_valid_png_bytes():
+    img = Image.new("RGB", (20, 20), color="blue")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
-    response = client.post(
+
+def create_product_helper(client, admin_headers):
+    return client.post(
         "/products",
-        headers={
-            "Authorization": f"Bearer {token}"
-        },
+        headers=admin_headers,
         data={
             "name": "Laptop",
             "category": "Electronics",
@@ -39,17 +25,10 @@ def create_product(client, token):
         }
     )
 
-    return response
 
+def test_create_product(client, admin_headers):
 
-def test_create_product(client):
-
-    token = get_admin_token(client)
-
-    response = create_product(
-        client,
-        token
-    )
+    response = create_product_helper(client, admin_headers)
 
     assert response.status_code == 201
 
@@ -65,18 +44,26 @@ def test_create_product(client):
     assert float(data["sale_price"]) == 54000
 
 
-def test_get_products(client):
+def test_create_product_unauthorized(client):
 
-    token = get_admin_token(client)
-
-    create_product(
-        client,
-        token
+    response = client.post(
+        "/products",
+        data={
+            "name": "Laptop",
+            "purchase_price": "50000",
+            "retail_price": "60000",
+            "sale_price": "54000"
+        }
     )
 
-    response = client.get(
-        "/products"
-    )
+    assert response.status_code == 401
+
+
+def test_get_products(client, admin_headers):
+
+    create_product_helper(client, admin_headers)
+
+    response = client.get("/products")
 
     assert response.status_code == 200
 
@@ -87,20 +74,13 @@ def test_get_products(client):
     assert products[0]["category"] == "Electronics"
 
 
-def test_get_product(client):
+def test_get_product(client, admin_headers):
 
-    token = get_admin_token(client)
-
-    create_response = create_product(
-        client,
-        token
-    )
+    create_response = create_product_helper(client, admin_headers)
 
     product_id = create_response.json()["id"]
 
-    response = client.get(
-        f"/products/{product_id}"
-    )
+    response = client.get(f"/products/{product_id}")
 
     assert response.status_code == 200
 
@@ -110,22 +90,23 @@ def test_get_product(client):
     assert data["category"] == "Electronics"
 
 
-def test_update_product(client):
+def test_get_product_not_found(client):
 
-    token = get_admin_token(client)
+    response = client.get("/products/99999")
 
-    create_response = create_product(
-        client,
-        token
-    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Product not found"
+
+
+def test_update_product(client, admin_headers):
+
+    create_response = create_product_helper(client, admin_headers)
 
     product_id = create_response.json()["id"]
 
     response = client.put(
         f"/products/{product_id}",
-        headers={
-            "Authorization": f"Bearer {token}"
-        },
+        headers=admin_headers,
         data={
             "name": "Updated Laptop",
             "category": "Computers",
@@ -148,47 +129,54 @@ def test_update_product(client):
     assert float(data["retail_price"]) == 70000
     assert float(data["discount"]) == 10
 
-    # Sale price should be recalculated:
-    # 70000 - 10% = 63000
+    # Sale price recalculated: 70000 - 10% = 63000
     assert float(data["sale_price"]) == 63000
 
 
-def test_delete_product(client):
+def test_update_product_not_found(client, admin_headers):
 
-    token = get_admin_token(client)
-
-    create_response = create_product(
-        client,
-        token
-    )
-
-    product_id = create_response.json()["id"]
-
-    response = client.delete(
-        f"/products/{product_id}",
-        headers={
-            "Authorization": f"Bearer {token}"
-        }
-    )
-
-    assert response.status_code == 204
-
-    response = client.get(
-        f"/products/{product_id}"
+    response = client.put(
+        "/products/99999",
+        headers=admin_headers,
+        data={"name": "Non-existent"}
     )
 
     assert response.status_code == 404
 
 
-def test_negative_product_quantity(client):
+def test_delete_product(client, admin_headers):
 
-    token = get_admin_token(client)
+    create_response = create_product_helper(client, admin_headers)
+
+    product_id = create_response.json()["id"]
+
+    response = client.delete(
+        f"/products/{product_id}",
+        headers=admin_headers
+    )
+
+    assert response.status_code == 204
+
+    response = client.get(f"/products/{product_id}")
+
+    assert response.status_code == 404
+
+
+def test_delete_product_not_found(client, admin_headers):
+
+    response = client.delete(
+        "/products/99999",
+        headers=admin_headers
+    )
+
+    assert response.status_code == 404
+
+
+def test_negative_product_quantity(client, admin_headers):
 
     response = client.post(
         "/products",
-        headers={
-            "Authorization": f"Bearer {token}"
-        },
+        headers=admin_headers,
         data={
             "name": "Invalid Product",
             "quantity": "-5",
@@ -200,3 +188,55 @@ def test_negative_product_quantity(client):
     )
 
     assert response.status_code == 400
+
+
+def test_upload_product_image_invalid_type(client, admin_headers):
+
+    create_response = create_product_helper(client, admin_headers)
+    product_id = create_response.json()["id"]
+
+    fake_file = io.BytesIO(b"dummy binary data")
+
+    response = client.post(
+        f"/products/{product_id}/images",
+        headers=admin_headers,
+        files={"file": ("test.txt", fake_file, "text/plain")}
+    )
+
+    assert response.status_code == 400
+    assert "Only JPEG, PNG and WebP" in response.json()["detail"]
+
+
+def test_upload_and_get_product_image(client, admin_headers):
+
+    create_response = create_product_helper(client, admin_headers)
+    product_id = create_response.json()["id"]
+
+    valid_png = get_valid_png_bytes()
+    file_data = io.BytesIO(valid_png)
+
+    response = client.post(
+        f"/products/{product_id}/images",
+        headers=admin_headers,
+        files={"file": ("test.png", file_data, "image/png")}
+    )
+
+    assert response.status_code == 201
+    upload_data = response.json()
+    assert upload_data["product_id"] == product_id
+    assert "full_image_id" in upload_data
+
+    # Retrieve image
+    full_image_id = upload_data["full_image_id"]
+    get_img_response = client.get(f"/products/{product_id}/images/{full_image_id}")
+    assert get_img_response.status_code == 200
+    assert get_img_response.headers["content-type"] == "image/png"
+
+
+def test_get_product_image_not_found(client, admin_headers):
+
+    create_response = create_product_helper(client, admin_headers)
+    product_id = create_response.json()["id"]
+
+    response = client.get(f"/products/{product_id}/images/99999")
+    assert response.status_code == 404
