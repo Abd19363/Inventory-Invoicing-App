@@ -40,8 +40,7 @@ def test_duplicate_registration(client):
 
     assert response.status_code == 400
 
-    assert response.json()["detail"] == \
-        "Email already registered"
+    assert response.json()["detail"] == "Email already registered"
 
 
 def test_login(client):
@@ -97,8 +96,7 @@ def test_login_wrong_password(client):
 
     assert response.status_code == 401
 
-    assert response.json()["detail"] == \
-        "Invalid email or password"
+    assert response.json()["detail"] == "Invalid email or password"
 
 
 def test_login_unknown_user(client):
@@ -147,8 +145,20 @@ def test_refresh_token(client):
     data = response.json()
 
     assert data["access_token"]
-    assert data["refresh_token"] == \
-        login_data["refresh_token"]
+    assert data["refresh_token"] == login_data["refresh_token"]
+
+
+def test_refresh_token_invalid(client):
+
+    response = client.post(
+        "/auth/refresh",
+        json={
+            "refresh_token": "non_existent_refresh_token_string"
+        }
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid refresh token"
 
 
 def test_logout(client):
@@ -181,8 +191,20 @@ def test_logout(client):
 
     assert response.status_code == 200
 
-    assert response.json()["message"] == \
-        "Logged out successfully"
+    assert response.json()["message"] == "Logged out successfully"
+
+
+def test_logout_unknown_token(client):
+
+    response = client.post(
+        "/auth/logout",
+        json={
+            "refresh_token": "non_existent_token"
+        }
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Refresh token not found"
 
 
 def test_revoked_refresh_token(client):
@@ -222,5 +244,24 @@ def test_revoked_refresh_token(client):
 
     assert response.status_code == 401
 
-    assert response.json()["detail"] == \
-        "Refresh token has been revoked"
+    assert response.json()["detail"] == "Refresh token has been revoked"
+
+
+def test_get_me(client, admin_headers):
+
+    response = client.get(
+        "/auth/me",
+        headers=admin_headers
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "admin@example.com"
+    assert data["role"] == "ADMIN"
+
+
+def test_get_me_unauthorized(client):
+
+    response = client.get("/auth/me")
+
+    assert response.status_code == 401

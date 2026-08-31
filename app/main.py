@@ -1,3 +1,6 @@
+import os
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -28,12 +31,14 @@ app.add_middleware(
 )
 
 # ==========================================
-# DATABASE
+# DATABASE INITIALIZATION
 # ==========================================
 
-Base.metadata.create_all(
-    bind=engine
-)
+# Only create tables at module import time if NOT running under tests
+if not os.getenv("TESTING") and "pytest" not in sys.modules:
+    Base.metadata.create_all(
+        bind=engine
+    )
 
 
 # ==========================================

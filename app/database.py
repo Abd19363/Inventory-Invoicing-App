@@ -9,13 +9,15 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 load_dotenv()
 
 
-# Get PostgreSQL connection URL
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Get database connection URL (defaults to in-memory SQLite if not provided)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///:memory:")
 
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 # Create SQLAlchemy engine
 engine = create_engine(
-    DATABASE_URL
+    DATABASE_URL,
+    connect_args=connect_args
 )
 
 
@@ -30,6 +32,7 @@ SessionLocal = sessionmaker(
 # Base class for SQLAlchemy models
 class Base(DeclarativeBase):
     pass
+
 
 # Database dependency for FastAPI
 def get_db():
