@@ -237,7 +237,9 @@ def refresh_access_token(
             detail="Refresh token has been revoked"
         )
 
-    if refresh_token.expires_at < datetime.utcnow():
+    expires_at = refresh_token.expires_at
+    now = datetime.now(timezone.utc) if expires_at.tzinfo is not None else datetime.utcnow()
+    if expires_at < now:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token has expired"
