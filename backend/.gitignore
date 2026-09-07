@@ -1,0 +1,8 @@
+venv/
+.env
+
+# Python generated files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
