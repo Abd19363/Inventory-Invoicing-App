@@ -63,8 +63,13 @@ export default function InvoiceDetails() {
     const markPaidMutation = useMutation({
         mutationFn: () => markInvoiceAsPaid(invoiceId),
         onSuccess: () => {
-            queryClient.invalidateQueries(["invoice", invoiceId]);
-            queryClient.invalidateQueries(["invoices"]);
+            queryClient.invalidateQueries({
+                queryKey: ["invoice", invoiceId]
+            });
+
+            queryClient.invalidateQueries({
+                queryKey: ["invoices"]
+            });
         }
     });
 
@@ -432,11 +437,11 @@ export default function InvoiceDetails() {
                     <div className="mx-auto">
 
 
-                {/* ==================================================
+                        {/* ==================================================
                     HEADER
                 ================================================== */}
 
-                <div className="
+                        <div className="
                     bg-zinc-900
                     border
                     border-zinc-800
@@ -447,7 +452,7 @@ export default function InvoiceDetails() {
                     shadow-xl
                 ">
 
-                    <div className="
+                            <div className="
                         flex
                         flex-col
                         sm:flex-row
@@ -456,57 +461,57 @@ export default function InvoiceDetails() {
                         gap-5
                     ">
 
-                        <div>
+                                <div>
 
-                            <div className="flex items-center gap-3 mb-2">
-                                <p className="
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <p className="
                                     text-xs
                                     font-semibold
                                     tracking-widest
                                     text-emerald-400
                                 ">
-                                    SALES MANAGEMENT
-                                </p>
+                                            SALES MANAGEMENT
+                                        </p>
 
-                                {isPaid ? (
-                                    <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                                        ✓ PAID IN FULL
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                                        ● UNPAID / PENDING
-                                    </span>
-                                )}
-                            </div>
+                                        {isPaid ? (
+                                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                                ✓ PAID IN FULL
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                                                ● UNPAID / PENDING
+                                            </span>
+                                        )}
+                                    </div>
 
-                            <h1 className="
+                                    <h1 className="
                                 text-2xl
                                 sm:text-3xl
                                 font-extrabold
                                 text-white
                             ">
-                                Invoice Details
-                            </h1>
+                                        Invoice Details
+                                    </h1>
 
-                            <p className="
+                                    <p className="
                                 mt-2
                                 text-sm
                                 text-zinc-500
                             ">
-                                Invoice #{invoice.id}
-                            </p>
+                                        Invoice #{invoice.id}
+                                    </p>
 
-                        </div>
+                                </div>
 
 
-                        <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
 
-                            {!isPaid && (
-                                <button
-                                    type="button"
-                                    onClick={() => markPaidMutation.mutate()}
-                                    disabled={markPaidMutation.isLoading}
-                                    className="
+                                    {!isPaid && (
+                                        <button
+                                            type="button"
+                                            onClick={() => markPaidMutation.mutate()}
+                                            disabled={markPaidMutation.isLoading}
+                                            className="
                                         bg-emerald-600
                                         hover:bg-emerald-500
                                         active:bg-emerald-700
@@ -521,18 +526,18 @@ export default function InvoiceDetails() {
                                         hover:-translate-y-0.5
                                         disabled:opacity-50
                                     "
-                                >
-                                    {markPaidMutation.isLoading ? "Processing..." : "✓ Mark as Paid"}
-                                </button>
-                            )}
+                                        >
+                                            {markPaidMutation.isLoading ? "Processing..." : "✓ Mark as Paid"}
+                                        </button>
+                                    )}
 
-                            {invoice.status !== "paid" && (
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        router.push(`/Invoices/Edit/${invoice.id}`)
-                                    }
-                                    className="
+                                    {invoice.status !== "paid" && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                router.push(`/Invoices/Edit/${invoice.id}`)
+                                            }
+                                            className="
                                         bg-amber-600
                                         hover:bg-amber-500
                                         active:bg-amber-700
@@ -549,15 +554,15 @@ export default function InvoiceDetails() {
                                         items-center
                                         gap-2
                                     "
-                                >
-                                    ✏️ Edit Invoice
-                                </button>
-                            )}
+                                        >
+                                            ✏️ Edit Invoice
+                                        </button>
+                                    )}
 
-                            <button
-                                type="button"
-                                onClick={() => viewInvoicePdf(invoice.id)}
-                                className="
+                                    <button
+                                        type="button"
+                                        onClick={() => viewInvoicePdf(invoice.id)}
+                                        className="
                                     bg-indigo-600
                                     hover:bg-indigo-500
                                     text-white
@@ -574,16 +579,16 @@ export default function InvoiceDetails() {
                                     gap-2
                                     cursor-pointer
                                 "
-                            >
-                                📄 View PDF Report
-                            </button>
+                                    >
+                                        📄 View PDF Report
+                                    </button>
 
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    router.push("/Invoices")
-                                }
-                                className="
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            router.push("/Invoices")
+                                        }
+                                        className="
                                     bg-zinc-800
                                     hover:bg-zinc-700
                                     text-zinc-200
@@ -595,23 +600,23 @@ export default function InvoiceDetails() {
                                     border-zinc-700
                                     transition-all
                                 "
-                            >
-                                ← Back to Invoices
-                            </button>
+                                    >
+                                        ← Back to Invoices
+                                    </button>
+
+                                </div>
+
+                            </div>
 
                         </div>
 
-                    </div>
 
-                </div>
-
-
-                {/* ==================================================
+                        {/* ==================================================
                     PAID READ-ONLY BANNER
                 ================================================== */}
 
-                {isPaid && (
-                    <div className="
+                        {isPaid && (
+                            <div className="
                         bg-emerald-950/40
                         border
                         border-emerald-500/30
@@ -624,20 +629,20 @@ export default function InvoiceDetails() {
                         text-emerald-200
                         text-sm
                     ">
-                        <span className="text-xl">🔒</span>
-                        <div>
-                            <p className="font-bold text-emerald-400">Paid Invoice — Locked & Read-Only</p>
-                            <p className="text-zinc-400 text-xs">This invoice has been marked as Paid. All quantities, pricing, and customer details are permanently secured against edits.</p>
-                        </div>
-                    </div>
-                )}
+                                <span className="text-xl">🔒</span>
+                                <div>
+                                    <p className="font-bold text-emerald-400">Paid Invoice — Locked & Read-Only</p>
+                                    <p className="text-zinc-400 text-xs">This invoice has been marked as Paid. All quantities, pricing, and customer details are permanently secured against edits.</p>
+                                </div>
+                            </div>
+                        )}
 
 
-                {/* ==================================================
+                        {/* ==================================================
                     CUSTOMER + INVOICE INFORMATION
                 ================================================== */}
 
-                <div className="
+                        <div className="
                     bg-zinc-900
                     border
                     border-zinc-800
@@ -648,7 +653,7 @@ export default function InvoiceDetails() {
                     shadow-xl
                 ">
 
-                    <h2 className="
+                            <h2 className="
                         text-xl
                         font-bold
                         text-white
@@ -657,11 +662,11 @@ export default function InvoiceDetails() {
                         border-zinc-800
                         pb-4
                     ">
-                        Invoice Information
-                    </h2>
+                                Invoice Information
+                            </h2>
 
 
-                    <div className="
+                            <div className="
                         grid
                         grid-cols-1
                         sm:grid-cols-2
@@ -669,11 +674,11 @@ export default function InvoiceDetails() {
                     ">
 
 
-                        {/* INVOICE ID */}
+                                {/* INVOICE ID */}
 
-                        <div>
+                                <div>
 
-                            <p className="
+                                    <p className="
                                 text-xs
                                 uppercase
                                 tracking-wider
@@ -681,25 +686,25 @@ export default function InvoiceDetails() {
                                 text-zinc-500
                                 mb-1
                             ">
-                                Invoice ID
-                            </p>
+                                        Invoice ID
+                                    </p>
 
-                            <p className="
+                                    <p className="
                                 text-lg
                                 font-semibold
                                 text-white
                             ">
-                                #{invoice.id}
-                            </p>
+                                        #{invoice.id}
+                                    </p>
 
-                        </div>
+                                </div>
 
 
-                        {/* CUSTOMER NAME */}
+                                {/* CUSTOMER NAME */}
 
-                        <div>
+                                <div>
 
-                            <p className="
+                                    <p className="
                                 text-xs
                                 uppercase
                                 tracking-wider
@@ -707,25 +712,25 @@ export default function InvoiceDetails() {
                                 text-zinc-500
                                 mb-1
                             ">
-                                Customer Name
-                            </p>
+                                        Customer Name
+                                    </p>
 
-                            <p className="
+                                    <p className="
                                 text-lg
                                 font-semibold
                                 text-white
                             ">
-                                {invoice.customerName || "—"}
-                            </p>
+                                        {invoice.customerName || "—"}
+                                    </p>
 
-                        </div>
+                                </div>
 
 
-                        {/* CUSTOMER EMAIL */}
+                                {/* CUSTOMER EMAIL */}
 
-                        <div>
+                                <div>
 
-                            <p className="
+                                    <p className="
                                 text-xs
                                 uppercase
                                 tracking-wider
@@ -733,26 +738,26 @@ export default function InvoiceDetails() {
                                 text-zinc-500
                                 mb-1
                             ">
-                                Customer Email
-                            </p>
+                                        Customer Email
+                                    </p>
 
-                            <p className="
+                                    <p className="
                                 text-lg
                                 font-semibold
                                 text-white
                                 break-all
                             ">
-                                {invoice.customerEmail || "—"}
-                            </p>
+                                        {invoice.customerEmail || "—"}
+                                    </p>
 
-                        </div>
+                                </div>
 
 
-                        {/* DATE */}
+                                {/* DATE */}
 
-                        <div>
+                                <div>
 
-                            <p className="
+                                    <p className="
                                 text-xs
                                 uppercase
                                 tracking-wider
@@ -760,25 +765,25 @@ export default function InvoiceDetails() {
                                 text-zinc-500
                                 mb-1
                             ">
-                                Invoice Date
-                            </p>
+                                        Invoice Date
+                                    </p>
 
-                            <p className="
+                                    <p className="
                                 text-lg
                                 font-semibold
                                 text-white
                             ">
-                                {invoice.date || "—"}
-                            </p>
+                                        {invoice.date || "—"}
+                                    </p>
 
-                        </div>
+                                </div>
 
 
-                        {/* CREATED AT */}
+                                {/* CREATED AT */}
 
-                        <div>
+                                <div>
 
-                            <p className="
+                                    <p className="
                                 text-xs
                                 uppercase
                                 tracking-wider
@@ -786,29 +791,29 @@ export default function InvoiceDetails() {
                                 text-zinc-500
                                 mb-1
                             ">
-                                Created At
-                            </p>
+                                        Created At
+                                    </p>
 
-                            <p className="
+                                    <p className="
                                 text-sm
                                 font-medium
                                 text-zinc-300
                             ">
-                                {invoice.createdAt
-                                    ? new Date(
-                                        invoice.createdAt
-                                    ).toLocaleString()
-                                    : "—"}
-                            </p>
+                                        {invoice.createdAt
+                                            ? new Date(
+                                                invoice.createdAt
+                                            ).toLocaleString()
+                                            : "—"}
+                                    </p>
 
-                        </div>
+                                </div>
 
 
-                        {/* GRAND TOTAL */}
+                                {/* GRAND TOTAL */}
 
-                        <div>
+                                <div>
 
-                            <p className="
+                                    <p className="
                                 text-xs
                                 uppercase
                                 tracking-wider
@@ -816,30 +821,30 @@ export default function InvoiceDetails() {
                                 text-zinc-500
                                 mb-1
                             ">
-                                Grand Total
-                            </p>
+                                        Grand Total
+                                    </p>
 
-                            <p className="
+                                    <p className="
                                 text-2xl
                                 font-extrabold
                                 text-emerald-400
                             ">
-                                Rs.{" "}
-                                {invoiceTotal.toLocaleString()}
-                            </p>
+                                        Rs.{" "}
+                                        {invoiceTotal.toLocaleString()}
+                                    </p>
+
+                                </div>
+
+                            </div>
 
                         </div>
 
-                    </div>
 
-                </div>
-
-
-                {/* ==================================================
+                        {/* ==================================================
                     PRODUCTS
                 ================================================== */}
 
-                <div className="
+                        <div className="
                     bg-zinc-900
                     border
                     border-zinc-800
@@ -849,7 +854,7 @@ export default function InvoiceDetails() {
                     shadow-xl
                 ">
 
-                    <div className="
+                            <div className="
                         flex
                         flex-col
                         sm:flex-row
@@ -859,15 +864,15 @@ export default function InvoiceDetails() {
                         mb-6
                     ">
 
-                        <h2 className="
+                                <h2 className="
                             text-xl
                             font-bold
                             text-white
                         ">
-                            Invoice Items
-                        </h2>
+                                    Invoice Items
+                                </h2>
 
-                        <span className="
+                                <span className="
                             w-fit
                             px-3
                             py-1
@@ -879,31 +884,31 @@ export default function InvoiceDetails() {
                             text-xs
                             font-semibold
                         ">
-                            {(invoice.items || []).length}{" "}
-                            {(invoice.items || []).length === 1
-                                ? "Item"
-                                : "Items"}
-                        </span>
+                                    {(invoice.items || []).length}{" "}
+                                    {(invoice.items || []).length === 1
+                                        ? "Item"
+                                        : "Items"}
+                                </span>
 
-                    </div>
+                            </div>
 
 
-                    <div className="
+                            <div className="
                         overflow-x-auto
                         rounded-xl
                         border
                         border-zinc-800
                     ">
 
-                        <table className="
+                                <table className="
                             w-full
                             border-collapse
                             min-w-[700px]
                         ">
 
-                            <thead>
+                                    <thead>
 
-                                <tr className="
+                                        <tr className="
                                     bg-zinc-950
                                     text-zinc-400
                                     text-xs
@@ -913,78 +918,78 @@ export default function InvoiceDetails() {
                                     border-zinc-800
                                 ">
 
-                                    <th className="p-4 text-left">
-                                        Product
-                                    </th>
+                                            <th className="p-4 text-left">
+                                                Product
+                                            </th>
 
-                                    <th className="p-4 text-center">
-                                        Quantity
-                                    </th>
+                                            <th className="p-4 text-center">
+                                                Quantity
+                                            </th>
 
-                                    <th className="p-4 text-right">
-                                        Retail Price
-                                    </th>
+                                            <th className="p-4 text-right">
+                                                Retail Price
+                                            </th>
 
-                                    <th className="p-4 text-center">
-                                        Discount
-                                    </th>
+                                            <th className="p-4 text-center">
+                                                Discount
+                                            </th>
 
-                                    <th className="p-4 text-right">
-                                        Sale Price
-                                    </th>
+                                            <th className="p-4 text-right">
+                                                Sale Price
+                                            </th>
 
-                                    <th className="p-4 text-right">
-                                        Subtotal
-                                    </th>
+                                            <th className="p-4 text-right">
+                                                Subtotal
+                                            </th>
 
-                                </tr>
+                                        </tr>
 
-                            </thead>
+                                    </thead>
 
 
-                            <tbody className="
+                                    <tbody className="
                                 divide-y
                                 divide-zinc-800
                             ">
 
-                                {(invoice.items || []).length === 0 ? (
+                                        {(invoice.items || []).length === 0 ? (
 
-                                    <tr>
+                                            <tr>
 
-                                        <td
-                                            colSpan={6}
-                                            className="
+                                                <td
+                                                    colSpan={6}
+                                                    className="
                                                 p-8
                                                 text-center
                                                 text-zinc-500
                                             "
-                                        >
-                                            No invoice items found.
-                                        </td>
+                                                >
+                                                    No invoice items found.
+                                                </td>
 
-                                    </tr>
+                                            </tr>
 
-                                ) : (
+                                        ) : (
 
-                                    invoice.items.map(
-                                        (item) => {
-                                            const pDetail = products[item.productId];
-                                            const retailP = item.retailPrice || pDetail?.retailPrice || item.unitPrice || 0;
-                                            const discountVal = item.discount || pDetail?.discount || 0;
-                                            const saleP = item.salePrice || item.unitPrice || 0;
+                                            invoice.items.map(
+                                                (item) => {
+                                                    const pDetail = products[item.productId];
+                                                    const retailP = item.retailPrice || pDetail?.retailPrice || item.unitPrice || 0;
+                                                    const discountVal = item.discount || pDetail?.discount || 0;
+                                                    const saleP = item.salePrice || item.unitPrice || 0;
 
-                                            return (
-                                                <tr
-                                                    key={item.id}
-                                                    className="
+                                                    return (
+                                                        <tr
+                                                            key={item.id}
+                                                            className="
                                                         hover:bg-zinc-800/50
                                                         transition-colors
                                                     "
-                                                >
-                                                    {/* PRODUCT */}
-                                                    <td className="p-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="
+                                                        >
+                                                            {/* PRODUCT */}
+                                                            <td className="p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="
                                                                 h-12
                                                                 w-12
                                                                 flex-shrink-0
@@ -994,74 +999,74 @@ export default function InvoiceDetails() {
                                                                 border-zinc-700
                                                                 bg-zinc-950
                                                             ">
-                                                                {pDetail?.thumbnailUrl ? (
-                                                                    <img
-                                                                        src={pDetail.thumbnailUrl}
-                                                                        alt={item.name || "Product"}
-                                                                        className="h-full w-full object-contain"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="h-full w-full flex items-center justify-center text-zinc-600 text-lg">
-                                                                        📦
+                                                                        {pDetail?.thumbnailUrl ? (
+                                                                            <img
+                                                                                src={pDetail.thumbnailUrl}
+                                                                                alt={item.name || "Product"}
+                                                                                className="h-full w-full object-contain"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="h-full w-full flex items-center justify-center text-zinc-600 text-lg">
+                                                                                📦
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-semibold text-white">
-                                                                    {item.name || "Unknown Product"}
-                                                                </p>
-                                                                <p className="mt-0.5 text-xs text-zinc-500">
-                                                                    Product #{item.productId}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
+                                                                    <div>
+                                                                        <p className="font-semibold text-white">
+                                                                            {item.name || "Unknown Product"}
+                                                                        </p>
+                                                                        <p className="mt-0.5 text-xs text-zinc-500">
+                                                                            Product #{item.productId}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
 
-                                                    {/* QUANTITY */}
-                                                    <td className="p-4 text-center text-zinc-300 font-medium">
-                                                        {item.quantity}
-                                                    </td>
+                                                            {/* QUANTITY */}
+                                                            <td className="p-4 text-center text-zinc-300 font-medium">
+                                                                {item.quantity}
+                                                            </td>
 
-                                                    {/* RETAIL PRICE */}
-                                                    <td className="p-4 text-right text-zinc-300 font-medium">
-                                                        Rs. {Number(retailP).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </td>
+                                                            {/* RETAIL PRICE */}
+                                                            <td className="p-4 text-right text-zinc-300 font-medium">
+                                                                Rs. {Number(retailP).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
 
-                                                    {/* DISCOUNT */}
-                                                    <td className="p-4 text-center">
-                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${Number(discountVal) > 0 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "text-zinc-500"}`}>
-                                                            {Number(discountVal) > 0 ? `${discountVal}% OFF` : "0%"}
-                                                        </span>
-                                                    </td>
+                                                            {/* DISCOUNT */}
+                                                            <td className="p-4 text-center">
+                                                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${Number(discountVal) > 0 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "text-zinc-500"}`}>
+                                                                    {Number(discountVal) > 0 ? `${discountVal}% OFF` : "0%"}
+                                                                </span>
+                                                            </td>
 
-                                                    {/* SALE PRICE */}
-                                                    <td className="p-4 text-right text-emerald-300 font-semibold">
-                                                        Rs. {Number(saleP).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </td>
+                                                            {/* SALE PRICE */}
+                                                            <td className="p-4 text-right text-emerald-300 font-semibold">
+                                                                Rs. {Number(saleP).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
 
-                                                    {/* SUBTOTAL */}
-                                                    <td className="p-4 text-right font-extrabold text-emerald-400">
-                                                        Rs. {Number(item.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        }
-                                    )
+                                                            {/* SUBTOTAL */}
+                                                            <td className="p-4 text-right font-extrabold text-emerald-400">
+                                                                Rs. {Number(item.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+                                            )
 
-                                )}
+                                        )}
 
-                            </tbody>
+                                    </tbody>
 
-                        </table>
+                                </table>
 
-                    </div>
+                            </div>
 
 
-                    {/* ==================================================
+                            {/* ==================================================
                         TOTAL
                     ================================================== */}
 
-                    <div className="
+                            <div className="
                         mt-6
                         pt-6
                         border-t
@@ -1072,7 +1077,7 @@ export default function InvoiceDetails() {
                         gap-2
                     ">
 
-                        <div className="
+                                <div className="
                             flex
                             justify-between
                             w-full
@@ -1081,19 +1086,19 @@ export default function InvoiceDetails() {
                             text-zinc-500
                         ">
 
-                            <span>
-                                Calculated Total
-                            </span>
+                                    <span>
+                                        Calculated Total
+                                    </span>
 
-                            <span>
-                                Rs.{" "}
-                                {calculatedTotal.toLocaleString()}
-                            </span>
+                                    <span>
+                                        Rs.{" "}
+                                        {calculatedTotal.toLocaleString()}
+                                    </span>
 
-                        </div>
+                                </div>
 
 
-                        <div className="
+                                <div className="
                             flex
                             justify-between
                             w-full
@@ -1103,40 +1108,40 @@ export default function InvoiceDetails() {
                             font-extrabold
                         ">
 
-                            <span className="text-white">
-                                Grand Total
-                            </span>
+                                    <span className="text-white">
+                                        Grand Total
+                                    </span>
 
-                            <span className="
+                                    <span className="
                                 text-emerald-400
                             ">
-                                Rs.{" "}
-                                {invoiceTotal.toLocaleString()}
-                            </span>
+                                        Rs.{" "}
+                                        {invoiceTotal.toLocaleString()}
+                                    </span>
+
+                                </div>
+
+                            </div>
 
                         </div>
 
-                    </div>
 
-                </div>
-
-
-                {/* ==================================================
+                        {/* ==================================================
                     BOTTOM BUTTON
                 ================================================== */}
 
-                <div className="
+                        <div className="
                     flex
                     justify-center
                     mt-6
                 ">
 
-                    <button
-                        type="button"
-                        onClick={() =>
-                            router.push("/Invoices")
-                        }
-                        className="
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.push("/Invoices")
+                                }
+                                className="
                             bg-emerald-600
                             hover:bg-emerald-500
                             text-white
@@ -1148,13 +1153,13 @@ export default function InvoiceDetails() {
                             transition-all
                             hover:-translate-y-0.5
                         "
-                    >
-                        ← Go to Invoice List
-                    </button>
+                            >
+                                ← Go to Invoice List
+                            </button>
 
-                </div>
+                        </div>
 
-            </div>
+                    </div>
 
                 </main>
             </div>
