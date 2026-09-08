@@ -9,6 +9,24 @@ from app import models
 from app.routers import auth, suppliers, products, invoices
 
 
+def cors_origins():
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "https://inventory-invoicing-app.vercel.app",
+    ]
+    extra = os.getenv("CORS_ORIGINS", "") + "," + os.getenv("FRONTEND_URL", "")
+    for part in extra.split(","):
+        origin = part.strip().rstrip("/")
+        if origin:
+            origins.append(origin)
+    return list(dict.fromkeys(origins))
+
+
 app = FastAPI(
     title="Inventory Store API"
 )
@@ -16,16 +34,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "https://inventory-invoicing-app.vercel.app/"
-    ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origins=cors_origins(),
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
