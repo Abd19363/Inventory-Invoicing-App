@@ -1,10 +1,15 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+// Remove any trailing slashes from the base URL
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = RAW_API_URL.replace(/\/+$/, "");
 
 export async function apiFetch(endpoint, options = {}) {
-  const accessToken = localStorage.getItem("accessToken");
+  const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  // Ensure endpoint starts with a single leading slash
+  const formattedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const fullUrl = `${API_BASE_URL}${formattedEndpoint}`;
+
+  const response = await fetch(fullUrl, {
     ...options,
     headers: {
       ...(options.body instanceof FormData
