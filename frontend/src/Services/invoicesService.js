@@ -1,6 +1,4 @@
-const API_URL =
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:8000";
+import { getApiBaseUrl } from "./api";
 
 function getAuthHeaders(extraHeaders = {}) {
     const token =
@@ -168,7 +166,7 @@ export async function getInvoices() {
     try {
 
         const response = await fetch(
-            `${API_URL}/invoices`,
+            `${getApiBaseUrl()}/invoices`,
             {
                 method: "GET",
                 headers: getAuthHeaders({
@@ -205,7 +203,7 @@ export async function getInvoices() {
 export async function getInvoiceById(id) {
 
     const response = await fetch(
-        `${API_URL}/invoices/${id}`,
+        `${getApiBaseUrl()}/invoices/${id}`,
         {
             method: "GET",
             headers: getAuthHeaders({
@@ -265,7 +263,7 @@ export async function saveInvoice(invoice) {
 
 
     const response = await fetch(
-        `${API_URL}/invoices`,
+        `${getApiBaseUrl()}/invoices`,
         {
             method: "POST",
 
@@ -330,7 +328,7 @@ export async function updateInvoice(
 
 
     const response = await fetch(
-        `${API_URL}/invoices/${id}`,
+        `${getApiBaseUrl()}/invoices/${id}`,
         {
             method: "PUT",
 
@@ -359,7 +357,7 @@ export async function updateInvoice(
 export async function markInvoiceAsPaid(id) {
 
     const response = await fetch(
-        `${API_URL}/invoices/${id}`,
+        `${getApiBaseUrl()}/invoices/${id}`,
         {
             method: "PUT",
             headers: getAuthHeaders({
@@ -382,7 +380,7 @@ export async function markInvoiceAsPaid(id) {
 // ==========================================
 
 export function getInvoicePdfUrl(id) {
-    return `${API_URL}/invoices/${id}/pdf`;
+    return `${getApiBaseUrl()}/invoices/${id}/pdf`;
 }
 
 export function viewInvoicePdf(id) {
@@ -397,7 +395,7 @@ export function viewInvoicePdf(id) {
 export async function deleteInvoice(id) {
 
     const response = await fetch(
-        `${API_URL}/invoices/${id}`,
+        `${getApiBaseUrl()}/invoices/${id}`,
         {
             method: "DELETE",
             headers: getAuthHeaders()

@@ -1,6 +1,4 @@
-const API_URL =
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:8000";
+import { getApiBaseUrl } from "./api";
 
 function getAuthHeaders(extraHeaders = {}) {
     const token =
@@ -33,10 +31,10 @@ function getImageUrl(url) {
     }
 
     if (url.startsWith("/")) {
-        return `${API_URL}${url}`;
+        return `${getApiBaseUrl()}${url}`;
     }
 
-    return `${API_URL}/${url}`;
+    return `${getApiBaseUrl()}/${url}`;
 
 }
 
@@ -245,7 +243,7 @@ export async function getItems() {
 
         const response =
             await fetch(
-                `${API_URL}/products`,
+                `${getApiBaseUrl()}/products`,
                 {
                     method: "GET",
                     headers: getAuthHeaders({
@@ -300,7 +298,7 @@ export async function getItemById(id) {
 
     const response =
         await fetch(
-            `${API_URL}/products/${id}`,
+            `${getApiBaseUrl()}/products/${id}`,
             {
                 method: "GET",
                 headers: getAuthHeaders({
@@ -450,7 +448,7 @@ export async function addItems(item) {
 
     const response =
         await fetch(
-            `${API_URL}/products`,
+            `${getApiBaseUrl()}/products`,
             {
                 method: "POST",
                 // Do NOT set Content-Type manually — browser sets multipart boundary
@@ -555,7 +553,7 @@ export async function uploadProductImage(
 
 
     const url =
-        `${API_URL}/products/${productId}/images`;
+        `${getApiBaseUrl()}/products/${productId}/images`;
 
 
     console.log(
@@ -780,7 +778,7 @@ export async function updateItem(
 
     const response =
         await fetch(
-            `${API_URL}/products/${id}`,
+            `${getApiBaseUrl()}/products/${id}`,
             {
                 method: "PUT",
                 // Do NOT set Content-Type manually — browser sets multipart boundary
@@ -820,7 +818,7 @@ export async function deleteItem(id) {
 
     const response =
         await fetch(
-            `${API_URL}/products/${id}`,
+            `${getApiBaseUrl()}/products/${id}`,
             {
                 method: "DELETE",
                 headers: getAuthHeaders()

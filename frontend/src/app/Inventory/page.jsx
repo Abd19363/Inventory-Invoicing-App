@@ -8,13 +8,12 @@ import {
     getItems,
     deleteItem,
 } from "@/Services/inventoryService";
+import { getApiBaseUrl } from "@/Services/api";
 
 import useAuth from "@/hooks/useAuth";
 import Sidebar from "@/app/components/Sidebar";
 import useSidebarState from "@/hooks/useSidebarState";
 import ConfirmModal from "@/app/components/ConfirmModal";
-
-const API_URL = "http://localhost:8000";
 
 function InventoryContent() {
 
@@ -193,7 +192,7 @@ function InventoryContent() {
             return thumbnailUrl;
         }
 
-        return `${API_URL}${thumbnailUrl}`;
+        return `${getApiBaseUrl()}${thumbnailUrl}`;
 
     }
 

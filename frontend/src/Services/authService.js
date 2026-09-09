@@ -1,6 +1,4 @@
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:8000";
+import { getApiBaseUrl, htmlApiMisconfigMessage } from "./api";
 
 
 // ==========================================
@@ -112,7 +110,10 @@ async function handleResponse(response) {
         ) {
 
             message =
-                data;
+                data.includes("<!DOCTYPE html>") ||
+                data.includes("This page could not be found")
+                    ? htmlApiMisconfigMessage()
+                    : data;
         }
 
 
@@ -136,7 +137,7 @@ export async function register(email, password, role = "SALES_MANAGER") {
     const cleanEmail = email.trim().toLowerCase();
 
     const response = await fetch(
-        `${API_BASE_URL}/auth/register`,
+        `${getApiBaseUrl()}/auth/register`,
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -174,7 +175,7 @@ export async function login(
 
     const response =
         await fetch(
-            `${API_BASE_URL}/auth/login`,
+            `${getApiBaseUrl()}/auth/login`,
             {
                 method: "POST",
 
@@ -297,7 +298,7 @@ export async function refreshAccessToken() {
 
     const response =
         await fetch(
-            `${API_BASE_URL}/auth/refresh`,
+            `${getApiBaseUrl()}/auth/refresh`,
             {
                 method: "POST",
 
@@ -361,7 +362,7 @@ export async function logout() {
 
             const response =
                 await fetch(
-                    `${API_BASE_URL}/auth/logout`,
+                    `${getApiBaseUrl()}/auth/logout`,
                     {
                         method: "POST",
 
@@ -419,6 +420,9 @@ export async function logout() {
         "user"
     );
 
+    if (typeof document !== "undefined") {
+        document.documentElement.removeAttribute("data-admin-theme");
+    }
 
     console.log(
         "Local authentication tokens cleared."

@@ -3,6 +3,7 @@ import "./globals.css";
 import ReduxProvider from "./provider";
 import QueryProvider from "./queryProvider";
 import ToastProvider from "./components/ToastProvider";
+import AdminThemeProvider from "./components/AdminThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,12 +25,32 @@ export default function RootLayout({ children }) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var role = localStorage.getItem('userRole');
+                if (role === 'ADMIN') {
+                  var theme = localStorage.getItem('admin_theme');
+                  if (theme && theme !== 'default') {
+                    document.documentElement.setAttribute('data-admin-theme', theme);
+                  }
+                }
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full bg-[#051424] text-[#d4e4fa]">
         <QueryProvider>
           <ReduxProvider>
-            {children}
-            <ToastProvider />
+            <AdminThemeProvider>
+              {children}
+              <ToastProvider />
+            </AdminThemeProvider>
           </ReduxProvider>
         </QueryProvider>
       </body>
