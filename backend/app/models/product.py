@@ -59,6 +59,10 @@ class Product(Base):
         ForeignKey("suppliers.id"),
         nullable=True
     )
+    barcode: Mapped[str | None] = mapped_column(
+    String(100),
+    nullable=True
+    )
 
     supplier = relationship(
         "Supplier"
